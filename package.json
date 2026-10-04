@@ -8,9 +8,14 @@
     "build": "pnpm -r --filter=!distrito-zero-monorepo build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "pnpm -r --filter=!distrito-zero-monorepo typecheck"
+    "typecheck": "pnpm -r --filter=!distrito-zero-monorepo typecheck",
+    "standard-version": "standard-version",
+    "release-major": "standard-version --release-as major",
+    "release-minor": "standard-version --release-as minor",
+    "release-patch": "standard-version --release-as patch"
   },
   "devDependencies": {
+    "standard-version": "^9.5.0",
     "typescript": "^5.8.2",
     "vitest": "^3.0.7"
   }
