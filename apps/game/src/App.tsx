@@ -6,12 +6,15 @@ import { DistrictMetricsCard } from './components/DistrictMetricsCard.js';
 import { StationStatusCard } from './components/StationStatusCard.js';
 import { IncidentsFeed } from './components/IncidentsFeed.js';
 import { DispatchModal } from './components/DispatchModal.js';
-import { IsometricViewport } from './renderer/IsometricViewport.js';
+import { BottomNavigationDock } from './components/BottomNavigationDock.js';
+import { MinimapRadar } from './components/MinimapRadar.js';
+import { IsometricViewport3D } from './renderer/IsometricViewport3D.js';
 
 export const App: React.FC = () => {
   const simulation = useMemo(() => new GameSimulation(1337), []);
   const [gameState, setGameState] = useState<GameState>(() => createInitialGameState(1337));
   const [selectedIncidentForDispatch, setSelectedIncidentForDispatch] = useState<Incident | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('map');
 
   // Loop principal de simulação determinística do Game Core
   useEffect(() => {
@@ -66,33 +69,51 @@ export const App: React.FC = () => {
 
   const activeDistrict = gameState.districts[gameState.activeDistrictId];
   const parkedVehicles = Object.values(gameState.vehicles).filter((v) => v.status === 'parked');
+  const activeIncidentsList = Object.values(gameState.incidents).filter(
+    (i) => i.status !== 'resolved' && i.status !== 'failed'
+  );
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Barra Superior de Status em Cápsulas */}
       <HeaderHUD
         state={gameState}
         onTogglePause={handleTogglePause}
         onChangeSpeed={handleChangeSpeed}
       />
 
+      {/* Área Central: Viewport 3D + Painéis Flutuantes */}
       <main className="game-viewport-container">
-        {/* Renderizador Isométrico de Baixo Nível (LOD, Grid, Prédios, Viaturas) */}
-        <IsometricViewport state={gameState} />
+        {/* Renderizador Three.js 3D Low Poly Isométrico */}
+        <IsometricViewport3D state={gameState} />
 
-        {/* Camada React de Gestão Territorial & Delegacia */}
+        {/* Camada React de Gestão Territorial & Delegacia (Esquerda) */}
         <aside className="ui-overlay-left">
           {activeDistrict && <DistrictMetricsCard district={activeDistrict} />}
           <StationStatusCard state={gameState} />
         </aside>
 
-        {/* Camada React de Despacho & Ocorrências */}
+        {/* Camada React de Despacho & Ocorrências (Direita) */}
         <aside className="ui-overlay-right">
           <IncidentsFeed
             incidents={gameState.incidents}
             onSelectDispatch={(inc) => setSelectedIncidentForDispatch(inc)}
           />
         </aside>
+
+        {/* Minimapa Radar com Heatmap de Criminalidade (Canto Inferior Direito) */}
+        <MinimapRadar
+          district={activeDistrict}
+          incidentsCount={activeIncidentsList.length}
+        />
       </main>
+
+      {/* Dock Inferior de Navegação e Strip de Cômodos da Delegacia */}
+      <BottomNavigationDock
+        activeTab={activeTab}
+        onSelectTab={(id) => setActiveTab(id)}
+        incidentsCount={activeIncidentsList.length}
+      />
 
       {/* Modal de Despacho */}
       {selectedIncidentForDispatch && (

@@ -56,73 +56,321 @@ body {
 }
 
 .hud-header {
-  height: 60px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
+  padding: 0 18px;
   border-bottom: 1px solid var(--border-subtle);
-  background: rgba(10, 13, 20, 0.95);
+  background: rgba(10, 14, 24, 0.95);
+  backdrop-filter: blur(16px);
   z-index: 100;
+  gap: 16px;
 }
 
-.brand-title {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #fff;
+/* Cápsula de Nível */
+.level-pill {
   display: flex;
   align-items: center;
   gap: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 6px 14px;
 }
 
-.brand-badge {
-  background: var(--accent-police);
-  color: #fff;
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 4px;
-  letter-spacing: 0.05em;
+.level-star {
+  font-size: 1.3rem;
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
 }
 
-.hud-stat-group {
+.level-progress-bg {
+  width: 90px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.level-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+  transition: width 0.4s ease;
+}
+
+/* Grupo Central de Cápsulas */
+.hud-capsules-group {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 12px;
 }
 
-.stat-item {
+.hud-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(16, 22, 36, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 6px 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hud-pill.budget-pill {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(6, 78, 59, 0.2);
+}
+
+.pill-value {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.pill-value.budget {
+  color: #34d399;
+}
+
+.btn-speed {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-speed.active {
+  background: var(--accent-police);
+  color: #fff;
+  box-shadow: 0 0 10px var(--accent-police-glow);
+}
+
+/* Dock Inferior de Navegação */
+.dock-container {
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 14, 24, 0.98);
+  border-top: 1px solid var(--border-subtle);
+  z-index: 100;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.dock-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  overflow-x: auto;
+}
+
+.dock-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 8px 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+.dock-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.dock-tab-btn.active {
+  background: var(--accent-police);
+  border-color: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 0 16px var(--accent-police-glow);
+}
+
+.dock-tab-icon {
+  font-size: 1rem;
+}
+
+.dock-tab-label {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+}
+
+.dock-tab-badge {
+  background: var(--accent-alert);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+
+/* Strip de Cômodos da Delegacia */
+.dock-rooms-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  overflow-x: auto;
+  background: rgba(6, 9, 16, 0.95);
+}
+
+.room-strip-card {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.room-strip-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.room-strip-card.selected {
+  border-color: #3b82f6;
+  background: rgba(37, 99, 235, 0.15);
+}
+
+.room-icon-box {
+  font-size: 1.4rem;
+}
+
+.room-info {
   display: flex;
   flex-direction: column;
 }
 
-.stat-label {
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  color: var(--text-muted);
+.room-title {
   font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #e2e8f0;
   letter-spacing: 0.05em;
 }
 
-.stat-value {
+.room-desc {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+}
+
+/* Minimapa Radar (Canto Inferior Direito) */
+.minimap-radar-container {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  width: 220px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 30;
+}
+
+.minimap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #cbd5e1;
+}
+
+.criminality-bar-track {
+  width: 70px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.criminality-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+  transition: width 0.3s;
+}
+
+.minimap-canvas-box {
+  width: 100%;
+  height: 110px;
+  background: #090e1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.radar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 90%;
+  height: 90%;
+  gap: 4px;
+}
+
+.radar-cell {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+}
+
+.radar-cell.high-crime {
+  background: rgba(239, 68, 68, 0.35);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.radar-cell.medium-crime {
+  background: rgba(245, 158, 11, 0.25);
+}
+
+.radar-cell.station-cell {
+  background: rgba(37, 99, 235, 0.4);
+  border-color: #3b82f6;
+}
+
+.radar-sweep-effect {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.minimap-footer {
+  display: flex;
+  justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-heading);
-}
-
-.stat-value.budget {
-  color: #34d399;
-}
-
-.stat-value.reputation {
-  color: #60a5fa;
-}
-
-.stat-value.time {
-  color: #fbbf24;
+  font-size: 0.62rem;
+  color: var(--text-muted);
 }
 
 /* Layout do Jogo */
