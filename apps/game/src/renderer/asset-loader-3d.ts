@@ -1,9 +1,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 // Cache em memória de modelos base
 const modelCache = new Map<string, THREE.Group>();
-const loader = new GLTFLoader();
+const gltfLoader = new GLTFLoader();
+const fbxLoader = new FBXLoader();
+const textureLoader = new THREE.TextureLoader();
 
 export async function loadGLBModel(path: string): Promise<THREE.Group> {
   if (modelCache.has(path)) {
@@ -11,7 +15,7 @@ export async function loadGLBModel(path: string): Promise<THREE.Group> {
   }
 
   return new Promise((resolve, reject) => {
-    loader.load(
+    gltfLoader.load(
       path,
       (gltf) => {
         const root = gltf.scene;
@@ -48,6 +52,55 @@ export async function loadGLBModel(path: string): Promise<THREE.Group> {
   });
 }
 
+async function safeLoadFBX(path: string): Promise<THREE.Group | null> {
+  return new Promise((resolve) => {
+    fbxLoader.load(
+      path,
+      (group) => resolve(group),
+      undefined,
+      (err) => {
+        console.warn(`Aviso: não foi possível carregar FBX ${path}:`, err);
+        resolve(null);
+      }
+    );
+  });
+}
+
+async function safeLoadAnim(path: string): Promise<THREE.AnimationClip | null> {
+  return new Promise((resolve) => {
+    fbxLoader.load(
+      path,
+      (group) => {
+        if (group.animations && group.animations.length > 0) {
+          resolve(group.animations[0]);
+        } else {
+          resolve(null);
+        }
+      },
+      undefined,
+      (err) => {
+        console.warn(`Aviso: não foi possível carregar animação ${path}:`, err);
+        resolve(null);
+      }
+    );
+  });
+}
+
+function loadTexture(path: string): THREE.Texture {
+  const tex = textureLoader.load(path);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestMipmapLinearFilter;
+  return tex;
+}
+
+export interface CharacterSkinTextures {
+  male: THREE.Texture;
+  female: THREE.Texture;
+  criminal: THREE.Texture;
+  cyborg: THREE.Texture;
+}
+
 export interface LoadedCityAssets {
   policeCarBase: THREE.Group;
   roadStraight: THREE.Group;
@@ -64,6 +117,11 @@ export interface LoadedCityAssets {
   buildingSkyscraper: THREE.Group;
   taxi: THREE.Group;
   sedan: THREE.Group;
+  // Personagens e Animações
+  characterBase: THREE.Group | null;
+  idleClip: THREE.AnimationClip | null;
+  runClip: THREE.AnimationClip | null;
+  skins: CharacterSkinTextures;
 }
 
 let cachedCityAssets: LoadedCityAssets | null = null;
@@ -86,7 +144,10 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     buildingE,
     buildingSkyscraper,
     taxi,
-    sedan
+    sedan,
+    characterBase,
+    idleClip,
+    runClip
   ] = await Promise.all([
     loadGLBModel('/models/vehicles/police.glb'),
     loadGLBModel('/models/roads/road-straight.glb'),
@@ -102,8 +163,18 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     loadGLBModel('/models/buildings/building-e.glb'),
     loadGLBModel('/models/buildings/building-skyscraper-a.glb'),
     loadGLBModel('/models/vehicles/taxi.glb'),
-    loadGLBModel('/models/vehicles/sedan.glb')
+    loadGLBModel('/models/vehicles/sedan.glb'),
+    safeLoadFBX('/models/characters/Model/characterMedium.fbx'),
+    safeLoadAnim('/models/characters/Animations/idle.fbx'),
+    safeLoadAnim('/models/characters/Animations/run.fbx')
   ]);
+
+  const skins: CharacterSkinTextures = {
+    male: loadTexture('/models/characters/Skins/skaterMaleA.png'),
+    female: loadTexture('/models/characters/Skins/skaterFemaleA.png'),
+    criminal: loadTexture('/models/characters/Skins/criminalMaleA.png'),
+    cyborg: loadTexture('/models/characters/Skins/cyborgFemaleA.png')
+  };
 
   cachedCityAssets = {
     policeCarBase,
@@ -120,7 +191,11 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     buildingE,
     buildingSkyscraper,
     taxi,
-    sedan
+    sedan,
+    characterBase,
+    idleClip,
+    runClip,
+    skins
   };
 
   return cachedCityAssets;
@@ -158,4 +233,76 @@ export function createPoliceCruiserFromAssets(assets: LoadedCityAssets): {
   root.add(sirenLightBlue);
 
   return { mesh: root, wheels, sirenLightRed, sirenLightBlue };
+}
+
+export interface CharacterInstance {
+  mesh: THREE.Group;
+  mixer?: THREE.AnimationMixer;
+  update: (delta: number) => void;
+}
+
+/**
+ * Cria uma instância de personagem animado (civil, policial ou criminoso)
+ */
+export function createCharacterInstance(
+  assets: LoadedCityAssets,
+  skinType: 'male' | 'female' | 'criminal' | 'cyborg' = 'male',
+  animation: 'idle' | 'run' = 'idle'
+): CharacterInstance | null {
+  if (!assets.characterBase) return null;
+
+  // Clona com esqueleto independente
+  const root = SkeletonUtils.clone(assets.characterBase) as THREE.Group;
+
+  // Seleciona a textura
+  const skinTexture = assets.skins[skinType] || assets.skins.male;
+
+  // Aplica o material na malha com textura e sombras
+  root.traverse((child) => {
+    if ((child as THREE.SkinnedMesh).isSkinnedMesh) {
+      const mesh = child as THREE.SkinnedMesh;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.material = new THREE.MeshStandardMaterial({
+        map: skinTexture,
+        roughness: 0.75,
+        metalness: 0.05
+      });
+    }
+  });
+
+  // Normalização precisa de altura e alinhamento dos pés ao chão
+  const bbox = new THREE.Box3().setFromObject(root);
+  const currentHeight = Math.max(0.001, bbox.max.y - bbox.min.y);
+  const targetHeight = 1.05; // Altura proporcional estilizada
+  const scale = targetHeight / currentHeight;
+  root.scale.set(scale, scale, scale);
+
+  // Container pai para isolar a posição mundial do offset dos pés
+  const container = new THREE.Group();
+  container.add(root);
+
+  // Se a origem do modelo estiver no quadril, elevar para que os pés fiquem no chão
+  const minY = bbox.min.y * scale;
+  if (minY < -0.001) {
+    root.position.y = -minY;
+  }
+
+  // Animação FBX
+  let mixer: THREE.AnimationMixer | undefined;
+  const clip = animation === 'run' ? assets.runClip : assets.idleClip;
+
+  if (clip) {
+    mixer = new THREE.AnimationMixer(root);
+    const action = mixer.clipAction(clip);
+    action.play();
+  }
+
+  const update = (delta: number) => {
+    if (mixer) {
+      mixer.update(delta);
+    }
+  };
+
+  return { mesh: container, mixer, update };
 }

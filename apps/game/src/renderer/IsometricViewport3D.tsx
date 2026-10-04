@@ -4,7 +4,8 @@ import { GameState } from '@distrito-zero/shared-types';
 import {
   LoadedCityAssets,
   preloadCityAssets,
-  createPoliceCruiserFromAssets
+  createPoliceCruiserFromAssets,
+  createCharacterInstance
 } from './asset-loader-3d.js';
 import {
   createCityGroundWithKenneyAssets,
@@ -13,6 +14,18 @@ import {
   createResidentialBuildingFromAssets,
   createIncidentMarkerMesh
 } from './city-builder-3d.js';
+
+interface PedestrianTrack {
+  mesh: THREE.Group;
+  update: (delta: number) => void;
+  walkData?: {
+    axis: 'x' | 'z';
+    min: number;
+    max: number;
+    speed: number;
+    dir: number;
+  };
+}
 
 interface IsometricViewport3DProps {
   state: GameState;
@@ -54,7 +67,9 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
       sirenLightBlue: THREE.PointLight;
     };
     incidentMarkers: Map<string, THREE.Group>;
+    suspectCharacters: Map<string, { mesh: THREE.Group; update: (delta: number) => void }>;
     buildingMeshes: Map<string, THREE.Group>;
+    pedestrians: PedestrianTrack[];
     clock: THREE.Clock;
   } | null>(null);
 
@@ -166,6 +181,75 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     cruiser.mesh.rotation.y = Math.PI / 2; // Alinhada à pista
     scene.add(cruiser.mesh);
 
+    // 4. Criação de Personagens e Pedestres Animados (Kenney)
+    const pedestrians: PedestrianTrack[] = [];
+
+    // Oficial 1: Portaria da Delegacia (Guarda)
+    const officer1 = createCharacterInstance(assets, 'male', 'idle');
+    if (officer1) {
+      officer1.mesh.position.set(14.4, 0.05, 14.2);
+      officer1.mesh.rotation.y = Math.PI / 4;
+      scene.add(officer1.mesh);
+      pedestrians.push(officer1);
+    }
+
+    // Oficial 2: Pátio de Viaturas
+    const officer2 = createCharacterInstance(assets, 'cyborg', 'idle');
+    if (officer2) {
+      officer2.mesh.position.set(17.6, 0.05, 14.8);
+      officer2.mesh.rotation.y = -Math.PI / 3;
+      scene.add(officer2.mesh);
+      pedestrians.push(officer2);
+    }
+
+    // Pedestre 1: Calçada da Mercearia do Zé (Homem caminhando)
+    const ped1 = createCharacterInstance(assets, 'male', 'run');
+    if (ped1) {
+      ped1.mesh.position.set(29.2, 0.04, 11.0);
+      ped1.mesh.rotation.y = 0;
+      scene.add(ped1.mesh);
+      pedestrians.push({
+        ...ped1,
+        walkData: { axis: 'z', min: 10.0, max: 20.0, speed: 1.5, dir: 1 }
+      });
+    }
+
+    // Pedestre 2: Calçada do Bloco Residencial Sul (Mulher caminhando)
+    const ped2 = createCharacterInstance(assets, 'female', 'run');
+    if (ped2) {
+      ped2.mesh.position.set(24.0, 0.04, 29.2);
+      ped2.mesh.rotation.y = Math.PI / 2;
+      scene.add(ped2.mesh);
+      pedestrians.push({
+        ...ped2,
+        walkData: { axis: 'x', min: 22.0, max: 32.0, speed: 1.4, dir: 1 }
+      });
+    }
+
+    // Pedestre 3: Calçada da Oficina Central
+    const ped3 = createCharacterInstance(assets, 'cyborg', 'run');
+    if (ped3) {
+      ped3.mesh.position.set(9.2, 0.04, 18.0);
+      ped3.mesh.rotation.y = 0;
+      scene.add(ped3.mesh);
+      pedestrians.push({
+        ...ped3,
+        walkData: { axis: 'z', min: 16.0, max: 25.0, speed: 1.5, dir: 1 }
+      });
+    }
+
+    // Pedestre 4: Calçada da Vila Esperança
+    const ped4 = createCharacterInstance(assets, 'female', 'run');
+    if (ped4) {
+      ped4.mesh.position.set(11.0, 0.04, 5.2);
+      ped4.mesh.rotation.y = Math.PI / 2;
+      scene.add(ped4.mesh);
+      pedestrians.push({
+        ...ped4,
+        walkData: { axis: 'x', min: 10.0, max: 18.0, speed: 1.3, dir: 1 }
+      });
+    }
+
     const clock = new THREE.Clock();
 
     threeRef.current = {
@@ -176,7 +260,9 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
       ambientLight,
       cruiserObj: cruiser,
       incidentMarkers: new Map(),
+      suspectCharacters: new Map(),
       buildingMeshes: new Map(),
+      pedestrians,
       clock
     };
 
@@ -326,7 +412,40 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
         }
       }
 
-      // 6. Marcadores 3D de Ocorrência na Pista
+      // 6. Atualização dos Pedestres e Personagens (Movimentação e Animações)
+      const { pedestrians, suspectCharacters } = threeRef.current;
+      for (const char of pedestrians) {
+        char.update(delta);
+
+        if (char.walkData) {
+          const { axis, min, max, speed } = char.walkData;
+          if (axis === 'z') {
+            char.mesh.position.z += char.walkData.dir * speed * delta;
+            if (char.mesh.position.z >= max) {
+              char.walkData.dir = -1;
+              char.mesh.rotation.y = Math.PI;
+            } else if (char.mesh.position.z <= min) {
+              char.walkData.dir = 1;
+              char.mesh.rotation.y = 0;
+            }
+          } else {
+            char.mesh.position.x += char.walkData.dir * speed * delta;
+            if (char.mesh.position.x >= max) {
+              char.walkData.dir = -1;
+              char.mesh.rotation.y = -Math.PI / 2;
+            } else if (char.mesh.position.x <= min) {
+              char.walkData.dir = 1;
+              char.mesh.rotation.y = Math.PI / 2;
+            }
+          }
+        }
+      }
+
+      for (const [_, susp] of suspectCharacters.entries()) {
+        susp.update(delta);
+      }
+
+      // 7. Marcadores 3D e Suspeitos de Ocorrência na Pista
       const activeIncidents = Object.values(currentState.incidents).filter(
         (i) => i.status !== 'resolved' && i.status !== 'failed'
       );
@@ -337,6 +456,21 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
           marker.position.set(inc.location.x * 4, 0.04, inc.location.y * 4);
           scene.add(marker);
           incidentMarkers.set(inc.id, marker);
+
+          // Suspeito na cena do crime
+          if (assetsRef.current) {
+            const suspect = createCharacterInstance(assetsRef.current, 'criminal', 'idle');
+            if (suspect) {
+              suspect.mesh.position.set(
+                inc.location.x * 4 + 0.6,
+                0.04,
+                inc.location.y * 4 + 0.6
+              );
+              suspect.mesh.rotation.y = Math.random() * Math.PI * 2;
+              scene.add(suspect.mesh);
+              suspectCharacters.set(inc.id, suspect);
+            }
+          }
         } else {
           const marker = incidentMarkers.get(inc.id);
           if (marker) {
@@ -349,6 +483,12 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
         if (!activeIncidents.some((i) => i.id === id)) {
           scene.remove(marker);
           incidentMarkers.delete(id);
+
+          const suspect = suspectCharacters.get(id);
+          if (suspect) {
+            scene.remove(suspect.mesh);
+            suspectCharacters.delete(id);
+          }
         }
       }
 
