@@ -145,11 +145,11 @@ O jogo deve usar níveis de simulação para manter desempenho e evitar complexi
 
 ---
 
-# 4. Visão isométrica
+# 4. Visão 3D Low Poly Isométrica
 
-O mundo principal será apresentado em **2D/2.5D isométrico**.
+O mundo principal será apresentado em **3D Low Poly com Câmera Isométrica (Ortográfica)**.
 
-Isométrico é o estilo visual da cidade, não a tecnologia utilizada.
+O visual é isométrico clássico (projeção ortográfica inclinada a 45° horizontal e 35.264° vertical), combinando o charme e legibilidade estratégica dos jogos de gestão e estratégia com o poder do 3D leve (curvas naturais de veículos, iluminação dinâmica dia/noite, sombras reais e profundidade automática).
 
 A câmera deve permitir:
 
@@ -710,23 +710,21 @@ O objetivo não é construir um sistema gigantesco de telemetria.
 
 A renderização visual deve ser uma camada separada.
 
-Direção inicial recomendada:
+Direção técnica oficial:
 
-**PixiJS + TypeScript**
+**Three.js + TypeScript (3D Low Poly Isométrico)**
 
 Responsabilidades:
 
-- renderizar cidade isométrica;
-- desenhar sprites;
-- animações;
-- câmera;
-- zoom;
-- pan;
-- seleção;
-- efeitos;
-- movimentação visual;
-- ordenação por profundidade;
-- transições visuais.
+- renderizar cidade 3D low poly com câmera ortográfica isométrica;
+- carregar modelos modulares leves (.glb / .gltf);
+- iluminação e sombras em tempo real (ciclo dia/noite);
+- rotação e movimentação suave de viaturas ao longo de vias;
+- câmera ortográfica com pan e zoom fluido;
+- seleção de prédios e viaturas via raycasting 3D;
+- partículas e efeitos visuais (sirenes azul/vermelha piscantes, fumaça, cones de luz);
+- ordenação nativa por z-buffer de GPU (sem bugs de sobreposição);
+- performance ultra-otimizada para rodar em hardware integrado e mobile.
 
 O renderer **não decide regras de gameplay**.
 
@@ -739,14 +737,14 @@ Core:
 UNIT_DISPATCHED
 
 Renderer:
-viatura inicia animação de saída
+viatura sai do pátio em 3D
 ↓
-segue rota visual
+segue malha viária com curvas suaves
 ↓
-chega ao destino
+chega ao local da ocorrência
 ```
 
-A tecnologia oficial e exclusiva de renderização é o **PixiJS**, atuando como renderizador gráfico 2D/2.5D leve, determinístico e de alta performance. O uso de Phaser foi formalmente descartado para evitar complexidade desnecessária e atritos de ciclo de vida com o React.
+A tecnologia oficial e exclusiva de renderização é o **Three.js**, renderizando a cidade em 3D Low Poly sob visão isométrica (câmera ortográfica). Essa escolha garante animações naturais de trânsito, sombras dinâmicas do ciclo dia/noite e total consistência visual sem demandar dezenas de spritesheets 2D cortados em ângulos fixos.
 
 ---
 
@@ -754,7 +752,7 @@ A tecnologia oficial e exclusiva de renderização é o **PixiJS**, atuando como
 
 O Distrito Zero deverá manter a existência lógica do mundo separada da representação visual. Prédios, NPCs, veículos e eventos continuam existindo no `game-core` independentemente de estarem visíveis na câmera.
 
-O PixiJS deverá apenas ajustar a quantidade de detalhes exibidos conforme a distância e o nível de zoom.
+O Three.js deverá apenas ajustar a quantidade de detalhes exibidos conforme a distância e o nível de zoom.
 
 ### Diretrizes de renderização e câmera
 
@@ -789,7 +787,7 @@ NPCs + animações + viaturas + efeitos + detalhes urbanos
 
 ### Princípio arquitetural
 
-> **O mundo existe no Game Core. O PixiJS apenas escolhe quanto desse mundo precisa ser representado visualmente naquele momento.**
+> **O mundo existe no Game Core. O Three.js apenas escolhe quanto desse mundo precisa ser representado visualmente naquele momento.**
 
 Essa abordagem deverá permitir uma cidade grande e visualmente viva sem exigir que todos os objetos, personagens e animações estejam sendo processados e renderizados simultaneamente.
 
@@ -853,7 +851,7 @@ Aplicação visual.
 Contém:
 
 - React;
-- PixiJS;
+- Three.js (3D Low Poly Isométrico);
 - HUD;
 - menus;
 - integração com o Core.
@@ -904,7 +902,7 @@ Deve permanecer pequeno.
 ```text
 TypeScript
 React
-PixiJS
+Three.js
 Vite
 pnpm workspaces
 Vitest
@@ -1287,9 +1285,9 @@ ADR = Architecture Decision Record.
 Exemplos:
 
 ```text
-ADR-001-pixijs-renderer.md
-ADR-002-deterministic-simulation.md
-ADR-003-local-first-persistence.md
+ADR-001-architecture-foundation.md
+ADR-002-threejs-lowpoly-renderer.md
+ADR-003-deterministic-simulation.md
 ```
 
 O objetivo é evitar que decisões importantes fiquem perdidas em conversas.
@@ -1307,7 +1305,7 @@ Criar:
 - game-data;
 - shared-types;
 - app React;
-- renderer PixiJS;
+- renderer Three.js (3D Low Poly Isométrico);
 - Vitest;
 - seed determinístico;
 - relógio/tick da simulação.
