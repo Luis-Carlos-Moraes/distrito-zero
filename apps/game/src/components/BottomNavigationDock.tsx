@@ -55,25 +55,27 @@ export const BottomNavigationDock: React.FC<BottomNavigationDockProps> = ({
         })}
       </nav>
 
-      {/* Strip de Cômodos da Delegacia Viva */}
-      <div className="dock-rooms-strip">
-        {ROOMS.map((room) => {
-          const isSelected = selectedRoom === room.id;
-          return (
-            <div
-              key={room.id}
-              onClick={() => setSelectedRoom(isSelected ? null : room.id)}
-              className={`room-strip-card ${isSelected ? 'selected' : ''}`}
-            >
-              <div className="room-icon-box">{room.icon}</div>
-              <div className="room-info">
-                <span className="room-title">{room.label}</span>
-                <span className="room-desc">{room.desc}</span>
+      {/* Strip de Cômodos da Delegacia Viva (exibido apenas ao selecionar a aba 'Delegacia') */}
+      {activeTab === 'station' && (
+        <div className="dock-rooms-strip">
+          {ROOMS.map((room) => {
+            const isSelected = selectedRoom === room.id;
+            return (
+              <div
+                key={room.id}
+                onClick={() => setSelectedRoom(isSelected ? null : room.id)}
+                className={`room-strip-card ${isSelected ? 'selected' : ''}`}
+              >
+                <div className="room-icon-box">{room.icon}</div>
+                <div className="room-info">
+                  <span className="room-title">{room.label}</span>
+                  <span className="room-desc">{room.desc}</span>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </footer>
   );
 };

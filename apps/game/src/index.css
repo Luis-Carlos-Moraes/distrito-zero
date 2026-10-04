@@ -390,28 +390,28 @@ body {
   z-index: 1;
 }
 
-/* Overlays operacionais */
+/* Overlays operacionais desafogados */
 .ui-overlay-left {
   position: absolute;
-  top: 16px;
-  left: 16px;
-  width: 320px;
+  top: 14px;
+  left: 14px;
+  width: 260px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   z-index: 20;
   pointer-events: auto;
 }
 
 .ui-overlay-right {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 340px;
-  max-height: calc(100vh - 100px);
+  top: 14px;
+  right: 14px;
+  width: 280px;
+  max-height: 48vh;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   z-index: 20;
   pointer-events: auto;
 }
@@ -420,20 +420,20 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border-subtle);
   font-family: var(--font-display);
-  font-size: 0.85rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   color: #cbd5e1;
 }
 
 .card-body {
-  padding: 14px 16px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 /* Barras de métricas */
