@@ -1,0 +1,12 @@
+COLOQUE OS ARQUIVOS 3D (.glb ou .gltf) AQUI:
+
+1. Prédios (Delegacia, lojas, casas, hospitais):
+   apps/game/public/models/buildings/
+
+2. Veículos (Viaturas policiais, carros, ambulâncias):
+   apps/game/public/models/vehicles/
+
+3. Ruas e calçadas (Asfalto, cruzamentos, postes):
+   apps/game/public/models/roads/
+
+Assim que colar os arquivos aqui, me avise no chat que eu faço a leitura e insiro no jogo!

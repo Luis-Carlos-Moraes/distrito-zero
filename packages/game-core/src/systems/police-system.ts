@@ -21,14 +21,14 @@ export function processPoliceSystem(
         continue;
       }
 
-      // Movimentação em direção ao destino (simplificada em ticks)
+      // Movimentação pelas ruas (Manhattan Street Pathing - navega pelos eixos das vias)
       const target = vehicle.targetPosition || incident.location;
       const dx = target.x - vehicle.position.x;
       const dy = target.y - vehicle.position.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const totalDist = Math.hypot(dx, dy);
 
-      if (dist <= 0.5) {
-        // Chegou no local
+      if (totalDist <= 0.6) {
+        // Chegou no local da ocorrência
         vehicle.position = { ...target };
         vehicle.status = 'on_scene';
         incident.status = 'on_scene';
@@ -39,10 +39,17 @@ export function processPoliceSystem(
           vehicleId: vehicle.id
         });
       } else {
-        // Avança em linha reta proporcional à velocidade
-        const step = Math.min(dist, 0.4 * vehicle.speed);
-        vehicle.position.x += (dx / dist) * step;
-        vehicle.position.y += (dy / dist) * step;
+        // Avança pelas vias (eixo primário até o cruzamento, depois vira no secundário)
+        const step = 0.5 * vehicle.speed;
+        if (Math.abs(dx) > 0.4) {
+          vehicle.position.x += Math.sign(dx) * Math.min(Math.abs(dx), step);
+        } else if (Math.abs(dy) > 0.4) {
+          vehicle.position.y += Math.sign(dy) * Math.min(Math.abs(dy), step);
+        } else {
+          // Ajuste fino final na calçada do alvo
+          vehicle.position.x += dx * 0.5;
+          vehicle.position.y += dy * 0.5;
+        }
       }
     }
 
@@ -101,9 +108,15 @@ export function processPoliceSystem(
           vehicleId: vehicle.id
         });
       } else {
-        const step = Math.min(dist, 0.4 * vehicle.speed);
-        vehicle.position.x += (dx / dist) * step;
-        vehicle.position.y += (dy / dist) * step;
+        const step = 0.5 * vehicle.speed;
+        if (Math.abs(dx) > 0.4) {
+          vehicle.position.x += Math.sign(dx) * Math.min(Math.abs(dx), step);
+        } else if (Math.abs(dy) > 0.4) {
+          vehicle.position.y += Math.sign(dy) * Math.min(Math.abs(dy), step);
+        } else {
+          vehicle.position.x = stationPos.x;
+          vehicle.position.y = stationPos.y;
+        }
       }
     }
   }

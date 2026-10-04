@@ -1,66 +1,69 @@
 import * as THREE from 'three';
+import { LoadedCityAssets } from './asset-loader-3d.js';
 
-// Materiais Low Poly elegantes e limpos
-export const MATERIALS = {
-  // Terreno e Urbanismo
-  grass: new THREE.MeshStandardMaterial({ color: 0x3d733e, roughness: 0.9 }),
-  groundBase: new THREE.MeshStandardMaterial({ color: 0x223824, roughness: 0.95 }),
-  asphalt: new THREE.MeshStandardMaterial({ color: 0x2b333e, roughness: 0.8 }),
-  roadLine: new THREE.MeshBasicMaterial({ color: 0xffffff }),
-  roadYellow: new THREE.MeshBasicMaterial({ color: 0xf59e0b }),
-  sidewalk: new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.9 }),
-  curb: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.9 }),
-
-  // Árvores e vegetação
-  treeTrunk: new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.9 }),
-  treeLeaves: new THREE.MeshStandardMaterial({ color: 0x226b35, roughness: 0.8 }),
-  treeLeavesAlt: new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }),
-
-  // Delegacia Central
-  stationBody: new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.6 }),
-  stationWhite: new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.7 }),
-  stationAccent: new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.4 }),
-  glass: new THREE.MeshStandardMaterial({ color: 0x67e8f9, roughness: 0.2, metalness: 0.4 }),
-  metal: new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.8 }),
-
-  // Prédios da cidade
-  brickCommercial: new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.85 }),
-  wallClean: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.8 }),
-  wallDegraded: new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.9 }),
-  wallAbandoned: new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.95 }),
-  roofTerracotta: new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.8 }),
-  roofBlue: new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.8 }),
-  roofDark: new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 }),
-
-  // Viatura Policial
-  policeWhite: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 }),
-  policeBlack: new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 }),
-  tire: new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.9 }),
-  sirenRed: new THREE.MeshBasicMaterial({ color: 0xef4444 }),
-  sirenBlue: new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+export const CITY_MATERIALS = {
+  grass: new THREE.MeshStandardMaterial({
+    color: 0x336b3b,
+    roughness: 0.9,
+    metalness: 0.05
+  }),
+  groundPedestal: new THREE.MeshStandardMaterial({
+    color: 0x0f172a,
+    roughness: 0.95
+  }),
+  sidewalkTile: new THREE.MeshStandardMaterial({
+    color: 0xa1a1aa,
+    roughness: 0.85
+  }),
+  stationYard: new THREE.MeshStandardMaterial({
+    color: 0x1e293b,
+    roughness: 0.75
+  }),
+  parkingYellow: new THREE.MeshBasicMaterial({
+    color: 0xfbbf24
+  }),
+  treeTrunk: new THREE.MeshStandardMaterial({
+    color: 0x5c3a21,
+    roughness: 0.9
+  }),
+  treeFoliage: new THREE.MeshStandardMaterial({
+    color: 0x22c55e,
+    roughness: 0.85
+  }),
+  treeFoliageDark: new THREE.MeshStandardMaterial({
+    color: 0x15803d,
+    roughness: 0.85
+  }),
+  incidentRed: new THREE.MeshBasicMaterial({
+    color: 0xef4444,
+    side: THREE.DoubleSide
+  })
 };
 
-/**
- * Cria uma árvore Low Poly estilizada
- */
-export function createTree(scale: number = 1): THREE.Group {
+export function createTreeMesh(scale: number = 1.0): THREE.Group {
   const tree = new THREE.Group();
 
-  const trunkGeo = new THREE.CylinderGeometry(0.12 * scale, 0.18 * scale, 0.9 * scale, 5);
-  const trunk = new THREE.Mesh(trunkGeo, MATERIALS.treeTrunk);
-  trunk.position.y = (0.45 * scale);
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12 * scale, 0.16 * scale, 0.8 * scale, 5),
+    CITY_MATERIALS.treeTrunk
+  );
+  trunk.position.y = 0.4 * scale;
   trunk.castShadow = true;
   tree.add(trunk);
 
-  const foliageGeo1 = new THREE.ConeGeometry(0.9 * scale, 1.2 * scale, 6);
-  const foliage1 = new THREE.Mesh(foliageGeo1, MATERIALS.treeLeaves);
-  foliage1.position.y = (1.2 * scale);
+  const foliage1 = new THREE.Mesh(
+    new THREE.ConeGeometry(0.85 * scale, 1.2 * scale, 6),
+    CITY_MATERIALS.treeFoliage
+  );
+  foliage1.position.y = 1.1 * scale;
   foliage1.castShadow = true;
   tree.add(foliage1);
 
-  const foliageGeo2 = new THREE.ConeGeometry(0.65 * scale, 1.0 * scale, 6);
-  const foliage2 = new THREE.Mesh(foliageGeo2, MATERIALS.treeLeavesAlt);
-  foliage2.position.y = (1.7 * scale);
+  const foliage2 = new THREE.Mesh(
+    new THREE.ConeGeometry(0.6 * scale, 0.9 * scale, 6),
+    CITY_MATERIALS.treeFoliageDark
+  );
+  foliage2.position.y = 1.6 * scale;
   foliage2.castShadow = true;
   tree.add(foliage2);
 
@@ -68,341 +71,263 @@ export function createTree(scale: number = 1): THREE.Group {
 }
 
 /**
- * Constrói a malha da cidade completa (Base Verde + Ruas Reais + Quarteirões)
+ * Cria a malha urbana completa e contínua com os modelos Kenney GLTF
  */
-export function createCityGround(): THREE.Group {
+export function createCityGroundWithKenneyAssets(assets: LoadedCityAssets): THREE.Group {
   const city = new THREE.Group();
 
-  // 1. Chão Verde da Cidade (Grama)
-  const groundGeo = new THREE.BoxGeometry(60, 0.2, 60);
-  const ground = new THREE.Mesh(groundGeo, MATERIALS.grass);
-  ground.position.y = -0.1;
-  ground.receiveShadow = true;
-  city.add(ground);
+  // 1. Pedestal do Diorama da Cidade (Base Limpa e Sólida)
+  const baseGeo = new THREE.BoxGeometry(46, 0.4, 46);
+  const baseMesh = new THREE.Mesh(baseGeo, CITY_MATERIALS.grass);
+  baseMesh.position.set(20, -0.2, 16);
+  baseMesh.receiveShadow = true;
+  city.add(baseMesh);
 
-  // 2. Ruas Principais: Criar malha viária em formato de grade limpa
-  // Avenida Horizontal (Z = 16)
-  const aveHGeo = new THREE.BoxGeometry(50, 0.05, 5);
-  const aveH = new THREE.Mesh(aveHGeo, MATERIALS.asphalt);
-  aveH.position.set(20, 0.05, 16);
-  aveH.receiveShadow = true;
-  city.add(aveH);
+  const pedestalGeo = new THREE.BoxGeometry(46.8, 1.2, 46.8);
+  const pedestalMesh = new THREE.Mesh(pedestalGeo, CITY_MATERIALS.groundPedestal);
+  pedestalMesh.position.set(20, -1.0, 16);
+  city.add(pedestalMesh);
 
-  // Avenida Vertical (X = 16)
-  const aveVGeo = new THREE.BoxGeometry(5, 0.05, 50);
-  const aveV = new THREE.Mesh(aveVGeo, MATERIALS.asphalt);
-  aveV.position.set(16, 0.05, 20);
-  aveV.receiveShadow = true;
-  city.add(aveV);
+  // 2. Ruas e Avenidas Contínuas da Cidade
+  // Coordenadas dos eixos viários principais
+  const X_ROADS = [8, 12, 16, 28, 32];
+  const Z_ROADS = [4, 12, 16, 24, 28];
+  const roadScale = 2.0; // 1 tile Kenney = 2.0 unidades de largura (2 faixas perfeitas)
 
-  // Rua Secundária Horizontal (Z = 32)
-  const streetHGeo = new THREE.BoxGeometry(50, 0.05, 4);
-  const streetH = new THREE.Mesh(streetHGeo, MATERIALS.asphalt);
-  streetH.position.set(20, 0.05, 32);
-  streetH.receiveShadow = true;
-  city.add(streetH);
+  // Conjunto de cruzamentos
+  const intersectionSet = new Set<string>();
+  for (const rx of X_ROADS) {
+    for (const rz of Z_ROADS) {
+      intersectionSet.add(`${rx},${rz}`);
 
-  // Rua Secundária Vertical (X = 32)
-  const streetVGeo = new THREE.BoxGeometry(4, 0.05, 50);
-  const streetV = new THREE.Mesh(streetVGeo, MATERIALS.asphalt);
-  streetV.position.set(32, 0.05, 20);
-  streetV.receiveShadow = true;
-  city.add(streetV);
+      // Cruzamento 4 vias Kenney
+      const cross = assets.roadCrossroad.clone(true);
+      cross.scale.set(roadScale, roadScale, roadScale);
+      cross.position.set(rx, 0.01, rz);
+      city.add(cross);
 
-  // 3. Faixas e Pinturas nas Vias
-  for (let x = -2; x <= 42; x += 3) {
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.15), MATERIALS.roadLine);
-    dash.position.set(x, 0.09, 16);
-    city.add(dash);
+      // Semáforos nos cruzamentos de grande fluxo
+      if ((rx === 16 && rz === 16) || (rx === 28 && rz === 16)) {
+        const trafficLight = assets.trafficLight.clone(true);
+        trafficLight.scale.set(1.8, 1.8, 1.8);
+        trafficLight.position.set(rx + 1.25, 0.02, rz + 1.25);
+        trafficLight.rotation.y = Math.PI / 4;
+        city.add(trafficLight);
+      }
+    }
   }
 
-  for (let z = -2; z <= 42; z += 3) {
-    const dash = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.06, 1.6), MATERIALS.roadLine);
-    dash.position.set(16, 0.09, z);
-    city.add(dash);
+  // Segmentos de ruas horizontais (ao longo do eixo X)
+  // road-straight por padrão estende ao longo do eixo X (rotation.y = 0)
+  for (const rz of Z_ROADS) {
+    for (let rx = 6; rx <= 34; rx += 2) {
+      if (intersectionSet.has(`${rx},${rz}`)) continue;
+
+      const roadSeg = assets.roadStraight.clone(true);
+      roadSeg.scale.set(roadScale, roadScale, roadScale);
+      roadSeg.position.set(rx, 0.01, rz);
+      roadSeg.rotation.y = 0; // Perfeitamente alinhado com o eixo X!
+      city.add(roadSeg);
+    }
   }
 
-  // 4. Calçadas de Concreto para os Quarteirões
-  const createBlockSidewalk = (cx: number, cz: number, w: number, d: number) => {
-    const block = new THREE.Mesh(new THREE.BoxGeometry(w, 0.15, d), MATERIALS.sidewalk);
-    block.position.set(cx, 0.1, cz);
-    block.receiveShadow = true;
-    city.add(block);
-  };
+  // Segmentos de ruas verticais (ao longo do eixo Z)
+  // Girar 90 graus para estender ao longo do eixo Z (rotation.y = Math.PI / 2)
+  for (const rx of X_ROADS) {
+    for (let rz = 2; rz <= 30; rz += 2) {
+      if (intersectionSet.has(`${rx},${rz}`)) continue;
 
-  createBlockSidewalk(7.5, 7.5, 11, 11);
-  createBlockSidewalk(24, 7.5, 10, 11);
-  createBlockSidewalk(7.5, 24, 11, 11);
-  createBlockSidewalk(24, 24, 11, 11);
+      const roadSeg = assets.roadStraight.clone(true);
+      roadSeg.scale.set(roadScale, roadScale, roadScale);
+      roadSeg.position.set(rx, 0.01, rz);
+      roadSeg.rotation.y = Math.PI / 2; // Perfeitamente alinhado com o eixo Z!
+      city.add(roadSeg);
+    }
+  }
 
-  // 5. Adicionar Árvores Urbanas nas praças e calçadas
-  const treeCoords = [
-    [4, 4], [11, 4], [4, 11], [11, 11],
-    [21, 5], [27, 5], [21, 11], [27, 11],
-    [5, 21], [11, 21], [5, 27],
-    [21, 21], [27, 21], [21, 27], [27, 27]
+  // 3. Postes de Iluminação Curvados Kenney ao longo das calçadas
+  const streetLightPositions = [
+    [16, 8], [16, 20],
+    [10, 16], [22, 16], [26, 16],
+    [28, 8], [28, 20],
+    [8, 20], [32, 20]
   ];
 
-  for (const [tx, tz] of treeCoords) {
-    const t = createTree(0.8 + Math.random() * 0.3);
-    t.position.set(tx, 0.15, tz);
-    city.add(t);
+  for (const [lx, lz] of streetLightPositions) {
+    const light = assets.streetLight.clone(true);
+    light.scale.set(1.8, 1.8, 1.8);
+    light.position.set(lx + 1.2, 0.02, lz);
+    light.rotation.y = -Math.PI / 2;
+    city.add(light);
   }
+
+  // 4. Árvores Urbanas Decorativas nos Quarteirões
+  const treePositions = [
+    [6, 6], [10, 6], [14, 6], [18, 6], [22, 6],
+    [6, 14], [10, 10], [14, 10], [22, 10], [26, 10],
+    [6, 18], [10, 18], [14, 18], [22, 18], [26, 18],
+    [6, 26], [10, 26], [14, 26], [22, 26], [26, 26]
+  ];
+
+  for (const [tx, tz] of treePositions) {
+    const tree = createTreeMesh(0.75 + Math.random() * 0.35);
+    tree.position.set(tx, 0.02, tz);
+    city.add(tree);
+  }
+
+  // 5. Veículos Civis Estacionados (Para a cidade parecer habitada e viva)
+  const taxi = assets.taxi.clone(true);
+  taxi.scale.set(0.65, 0.65, 0.65);
+  taxi.position.set(28.0, 0.02, 14.5);
+  taxi.rotation.y = 0;
+  city.add(taxi);
+
+  const sedan = assets.sedan.clone(true);
+  sedan.scale.set(0.65, 0.65, 0.65);
+  sedan.position.set(10.2, 0.02, 24.0);
+  sedan.rotation.y = Math.PI / 2;
+  city.add(sedan);
+
+  // Arranha-céu no horizonte leste (skyline de fundo, sem cobrir a delegacia)
+  const skyscraper = assets.buildingSkyscraper.clone(true);
+  skyscraper.scale.set(2.4, 2.4, 2.4);
+  skyscraper.position.set(36.0, 0.02, 8.0);
+  city.add(skyscraper);
 
   return city;
 }
 
 /**
  * Cria a Delegacia de Polícia 3D Central
+ * Posicionada ao lado do cruzamento (16, 16) com pátio de estacionamento voltado para a avenida
  */
-export function createPoliceStationMesh(): THREE.Group {
+export function createPoliceStationMeshFromAssets(assets: LoadedCityAssets): THREE.Group {
   const station = new THREE.Group();
 
-  // Pátio cercado
-  const yard = new THREE.Mesh(new THREE.BoxGeometry(9, 0.18, 9), MATERIALS.asphalt);
-  yard.position.y = 0.1;
-  yard.receiveShadow = true;
-  station.add(yard);
+  // Pátio com vaga e calçada da delegacia
+  const yardGeo = new THREE.BoxGeometry(5.8, 0.06, 5.8);
+  const yardMesh = new THREE.Mesh(yardGeo, CITY_MATERIALS.stationYard);
+  yardMesh.position.set(-1.8, 0.03, -1.8);
+  yardMesh.receiveShadow = true;
+  station.add(yardMesh);
 
-  // Muros de Segurança
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(9, 0.9, 0.2), MATERIALS.stationWhite);
-  backWall.position.set(0, 0.55, -4.4);
-  backWall.castShadow = true;
-  station.add(backWall);
+  // Faixas amarelas da vaga de viatura
+  const lineGeo = new THREE.BoxGeometry(0.1, 0.02, 2.2);
+  const l1 = new THREE.Mesh(lineGeo, CITY_MATERIALS.parkingYellow);
+  l1.position.set(0.2, 0.07, -0.6);
+  const l2 = new THREE.Mesh(lineGeo, CITY_MATERIALS.parkingYellow);
+  l2.position.set(1.4, 0.07, -0.6);
+  station.add(l1, l2);
 
-  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.9, 9), MATERIALS.stationWhite);
-  leftWall.position.set(-4.4, 0.55, 0);
-  leftWall.castShadow = true;
-  station.add(leftWall);
-
-  // Prédio Principal da Delegacia (Moderno e imponente)
-  const bldg = new THREE.Mesh(new THREE.BoxGeometry(5.5, 2.8, 4.0), MATERIALS.stationBody);
-  bldg.position.set(-1.2, 1.5, -1.8);
-  bldg.castShadow = true;
-  bldg.receiveShadow = true;
+  // Modelo Kenney do Prédio da Delegacia
+  const bldg = assets.stationBuilding.clone(true);
+  bldg.scale.set(2.8, 2.8, 2.8);
+  bldg.position.set(-2.2, 0.06, -2.2);
   station.add(bldg);
-
-  // Portaria branca saliente
-  const lobby = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.6, 1.4), MATERIALS.stationWhite);
-  lobby.position.set(-1.2, 0.9, 0.5);
-  lobby.castShadow = true;
-  station.add(lobby);
-
-  // Placa "POLÍCIA"
-  const sign = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.45, 0.1), MATERIALS.stationAccent);
-  sign.position.set(-1.2, 1.6, 1.25);
-  station.add(sign);
-
-  // Portas de vidro
-  const doors = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.0, 0.08), MATERIALS.glass);
-  doors.position.set(-1.2, 0.6, 1.25);
-  station.add(doors);
-
-  // Janelas do andar superior
-  for (let wx = -2.8; wx <= 0.8; wx += 1.2) {
-    const win = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.08), MATERIALS.glass);
-    win.position.set(wx, 2.2, 0.25);
-    station.add(win);
-  }
-
-  // Torre de Transmissão Tática
-  const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.15, 2.8, 6), MATERIALS.metal);
-  tower.position.set(-3.2, 3.8, -3.2);
-  tower.castShadow = true;
-  station.add(tower);
-
-  const redBeacon = new THREE.Mesh(new THREE.SphereGeometry(0.12, 6, 6), MATERIALS.sirenRed);
-  redBeacon.position.set(-3.2, 5.2, -3.2);
-  station.add(redBeacon);
-
-  // Vagas demarcadas para viaturas com faixas amarelas
-  const bayGeo = new THREE.BoxGeometry(0.1, 0.02, 2.5);
-  const b1 = new THREE.Mesh(bayGeo, MATERIALS.roadYellow);
-  b1.position.set(2.0, 0.2, 1.5);
-  const b2 = new THREE.Mesh(bayGeo, MATERIALS.roadYellow);
-  b2.position.set(3.6, 0.2, 1.5);
-  station.add(b1, b2);
 
   return station;
 }
 
 /**
- * Cria Comércios e Galpões
+ * Cria Prédio Comercial (Mercearia, Oficina) voltado para a pista
  */
-export function createCommercialBuildingMesh(stage: string): THREE.Group {
+export function createCommercialBuildingFromAssets(
+  bldgId: string,
+  stage: string,
+  assets: LoadedCityAssets
+): THREE.Group {
   const group = new THREE.Group();
-  const isAbandoned = stage === 'abandoned';
-  const isRecovered = stage === 'recovered' || stage === 'expanded';
 
-  // Base do Lote
-  const lot = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.12, 5.5), MATERIALS.sidewalk);
-  lot.position.y = 0.06;
+  // Calçada do lote comercial
+  const lot = new THREE.Mesh(
+    new THREE.BoxGeometry(4.4, 0.06, 4.4),
+    CITY_MATERIALS.sidewalkTile
+  );
+  lot.position.set(0, 0.03, 0);
   lot.receiveShadow = true;
   group.add(lot);
 
-  // Bloco do Prédio
-  const bldgGeo = new THREE.BoxGeometry(4.2, 2.6, 3.8);
-  const bldgMat = isAbandoned
-    ? MATERIALS.wallAbandoned
-    : isRecovered
-    ? MATERIALS.brickCommercial
-    : MATERIALS.wallDegraded;
-  const bldg = new THREE.Mesh(bldgGeo, bldgMat);
-  bldg.position.set(0, 1.36, -0.4);
-  bldg.castShadow = true;
-  bldg.receiveShadow = true;
-  group.add(bldg);
+  const baseModel = bldgId.includes('com-2') ? assets.buildingB : assets.buildingA;
+  const bldg = baseModel.clone(true);
+  bldg.scale.set(2.6, 2.6, 2.6);
+  bldg.position.set(0, 0.06, 0);
 
-  // Toldo e Vitrine
-  if (!isAbandoned) {
-    const awning = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.25, 0.8), MATERIALS.stationAccent);
-    awning.position.set(0, 1.4, 1.6);
-    awning.castShadow = true;
-    group.add(awning);
-
-    const storefront = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.0, 0.1), MATERIALS.glass);
-    storefront.position.set(0, 0.7, 1.55);
-    group.add(storefront);
+  if (stage === 'abandoned') {
+    bldg.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (mat) {
+          mat.color.multiplyScalar(0.75);
+        }
+      }
+    });
   }
 
-  // Equipamento de Ar no telhado
-  const ac = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.6, 0.8), MATERIALS.metal);
-  ac.position.set(1.2, 2.9, -0.6);
-  ac.castShadow = true;
-  group.add(ac);
-
+  group.add(bldg);
   return group;
 }
 
 /**
- * Cria Casas Residenciais
+ * Cria Bloco Residencial ou Casa usando modelos Kenney
  */
-export function createResidentialBuildingMesh(stage: string): THREE.Group {
-  const house = new THREE.Group();
-  const isAbandoned = stage === 'abandoned';
+export function createResidentialBuildingFromAssets(
+  bldgId: string,
+  stage: string,
+  assets: LoadedCityAssets
+): THREE.Group {
+  const group = new THREE.Group();
 
-  // Quintal
-  const yard = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.12, 5.5), MATERIALS.grass);
-  yard.position.y = 0.06;
+  // Quintal gramado
+  const yard = new THREE.Mesh(
+    new THREE.BoxGeometry(4.4, 0.06, 4.4),
+    CITY_MATERIALS.grass
+  );
+  yard.position.set(0, 0.03, 0);
   yard.receiveShadow = true;
-  house.add(yard);
+  group.add(yard);
 
-  // Paredes
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(3.4, 1.8, 3.2),
-    isAbandoned ? MATERIALS.wallAbandoned : MATERIALS.wallClean
-  );
-  body.position.set(0, 1.0, -0.4);
-  body.castShadow = true;
-  body.receiveShadow = true;
-  house.add(body);
+  const baseModel = bldgId.includes('res-2') ? assets.buildingE : assets.buildingD;
+  const bldg = baseModel.clone(true);
+  bldg.scale.set(2.6, 2.6, 2.6);
+  bldg.position.set(0, 0.06, 0);
 
-  // Telhado Colonial 2 Águas
-  const roof = new THREE.Mesh(
-    new THREE.ConeGeometry(2.8, 1.4, 4),
-    isAbandoned ? MATERIALS.roofDark : MATERIALS.roofTerracotta
-  );
-  roof.position.set(0, 2.6, -0.4);
-  roof.rotation.y = Math.PI / 4;
-  roof.castShadow = true;
-  house.add(roof);
-
-  // Pequena árvore no jardim da frente
-  const tree = createTree(0.7);
-  tree.position.set(1.8, 0.1, 1.6);
-  house.add(tree);
-
-  return house;
-}
-
-/**
- * Cria a Viatura Policial
- */
-export function createPoliceCruiserMesh(): {
-  mesh: THREE.Group;
-  sirenLightRed: THREE.PointLight;
-  sirenLightBlue: THREE.PointLight;
-} {
-  const cruiser = new THREE.Group();
-
-  // Chassi
-  const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 2.5), MATERIALS.policeBlack);
-  chassis.position.y = 0.38;
-  chassis.castShadow = true;
-  cruiser.add(chassis);
-
-  // Cabine
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.42, 1.3), MATERIALS.policeWhite);
-  cabin.position.set(0, 0.78, -0.15);
-  cabin.castShadow = true;
-  cruiser.add(cabin);
-
-  // Vidros
-  const glass = new THREE.Mesh(new THREE.BoxGeometry(1.22, 0.36, 1.25), MATERIALS.glass);
-  glass.position.set(0, 0.78, -0.15);
-  cruiser.add(glass);
-
-  // 4 Rodas
-  const wheelGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.22, 12);
-  wheelGeo.rotateZ(Math.PI / 2);
-
-  const wheelPositions = [
-    [-0.72, 0.24, 0.75],
-    [0.72, 0.24, 0.75],
-    [-0.72, 0.24, -0.75],
-    [0.72, 0.24, -0.75]
-  ];
-
-  for (const pos of wheelPositions) {
-    const w = new THREE.Mesh(wheelGeo, MATERIALS.tire);
-    w.position.set(pos[0], pos[1], pos[2]);
-    w.castShadow = true;
-    cruiser.add(w);
+  if (stage === 'abandoned') {
+    bldg.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (mat) {
+          mat.color.multiplyScalar(0.72);
+        }
+      }
+    });
   }
 
-  // Barra Giroflex no Teto
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.1, 0.22), MATERIALS.metal);
-  bar.position.set(0, 1.05, -0.15);
-  cruiser.add(bar);
+  group.add(bldg);
 
-  const blueLight = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.12, 0.18), MATERIALS.sirenBlue);
-  blueLight.position.set(-0.2, 1.06, -0.15);
-  const redLight = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.12, 0.18), MATERIALS.sirenRed);
-  redLight.position.set(0.2, 1.06, -0.15);
-  cruiser.add(blueLight, redLight);
+  const tree = createTreeMesh(0.65);
+  tree.position.set(1.4, 0.06, 1.4);
+  group.add(tree);
 
-  // Luzes reais pontuais do Giroflex
-  const sirenLightRed = new THREE.PointLight(0xef4444, 0, 8);
-  sirenLightRed.position.set(0.4, 1.3, -0.15);
-  cruiser.add(sirenLightRed);
-
-  const sirenLightBlue = new THREE.PointLight(0x38bdf8, 0, 8);
-  sirenLightBlue.position.set(-0.4, 1.3, -0.15);
-  cruiser.add(sirenLightBlue);
-
-  return { mesh: cruiser, sirenLightRed, sirenLightBlue };
+  return group;
 }
 
-/**
- * Marcador 3D sutil para Ocorrências (Sem banner gigante)
- */
 export function createIncidentMarkerMesh(): THREE.Group {
   const marker = new THREE.Group();
 
-  // Círculo pulsar no asfalto
+  // Anel pulsante no asfalto da ocorrência
   const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.8, 1.2, 24).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide })
+    new THREE.RingGeometry(0.7, 1.1, 24).rotateX(-Math.PI / 2),
+    CITY_MATERIALS.incidentRed
   );
-  ring.position.y = 0.15;
+  ring.position.y = 0.08;
   marker.add(ring);
 
   // Pin de alerta flutuante
   const pin = new THREE.Mesh(
-    new THREE.ConeGeometry(0.4, 0.9, 6).rotateX(Math.PI),
-    new THREE.MeshBasicMaterial({ color: 0xef4444 })
+    new THREE.ConeGeometry(0.35, 0.8, 6).rotateX(Math.PI),
+    CITY_MATERIALS.incidentRed
   );
-  pin.position.y = 2.0;
+  pin.position.y = 2.4;
   marker.add(pin);
 
   return marker;
