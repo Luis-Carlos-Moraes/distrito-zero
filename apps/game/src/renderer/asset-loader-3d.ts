@@ -117,6 +117,9 @@ export interface LoadedCityAssets {
   buildingSkyscraper: THREE.Group;
   taxi: THREE.Group;
   sedan: THREE.Group;
+  // Veículo Blindado Tático 09
+  armoredCarBase: THREE.Group | null;
+  armoredTexture: THREE.Texture;
   // Personagens e Animações
   characterBase: THREE.Group | null;
   idleClip: THREE.AnimationClip | null;
@@ -147,7 +150,8 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     sedan,
     characterBase,
     idleClip,
-    runClip
+    runClip,
+    armoredCarBase
   ] = await Promise.all([
     loadGLBModel('/models/vehicles/police.glb'),
     loadGLBModel('/models/roads/road-straight.glb'),
@@ -166,7 +170,8 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     loadGLBModel('/models/vehicles/sedan.glb'),
     safeLoadFBX('/models/characters/Model/characterMedium.fbx'),
     safeLoadAnim('/models/characters/Animations/idle.fbx'),
-    safeLoadAnim('/models/characters/Animations/run.fbx')
+    safeLoadAnim('/models/characters/Animations/run.fbx'),
+    safeLoadFBX('/models/vehicles/armored/armored_vehicle.fbx')
   ]);
 
   const skins: CharacterSkinTextures = {
@@ -175,6 +180,8 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     criminal: loadTexture('/models/characters/Skins/criminalMaleA.png'),
     cyborg: loadTexture('/models/characters/Skins/cyborgFemaleA.png')
   };
+
+  const armoredTexture = loadTexture('/models/vehicles/armored/TEXTURE.png');
 
   cachedCityAssets = {
     policeCarBase,
@@ -192,6 +199,8 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     buildingSkyscraper,
     taxi,
     sedan,
+    armoredCarBase,
+    armoredTexture,
     characterBase,
     idleClip,
     runClip,
@@ -199,6 +208,80 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
   };
 
   return cachedCityAssets;
+}
+
+/**
+ * Monta o modelo do Blindado Tático 09 (Home Police) com texturas e giroflex
+ */
+export function createArmoredVehicleFromAssets(assets: LoadedCityAssets): {
+  mesh: THREE.Group;
+  wheels: THREE.Object3D[];
+  sirenLightRed: THREE.PointLight;
+  sirenLightBlue: THREE.PointLight;
+} | null {
+  if (!assets.armoredCarBase) return null;
+
+  const root = new THREE.Group();
+  const car = assets.armoredCarBase.clone(true);
+
+  // Aplicar a textura tática extraída do TEXTURE.rar
+  const tex = assets.armoredTexture;
+  car.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.material = new THREE.MeshStandardMaterial({
+        map: tex,
+        roughness: 0.55,
+        metalness: 0.35
+      });
+    }
+  });
+
+  // Normalização de dimensões do modelo FBX
+  const bbox = new THREE.Box3().setFromObject(car);
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+
+  // Se o modelo estiver orientado ao longo de X, rotacionar para +Z
+  if (size.x > size.z) {
+    car.rotation.y = Math.PI / 2;
+  }
+
+  // Comprimento proporcional tático (~2.3 unidades no mapa)
+  const maxDim = Math.max(size.x, size.z);
+  const targetLength = 2.3;
+  const scale = targetLength / Math.max(0.001, maxDim);
+  car.scale.set(scale, scale, scale);
+
+  // Alinhar ao nível do chão
+  const scaledBbox = new THREE.Box3().setFromObject(car);
+  if (scaledBbox.min.y < -0.001) {
+    car.position.y = -scaledBbox.min.y;
+  }
+
+  root.add(car);
+
+  // Localizar rodas para rolagem
+  const wheels: THREE.Object3D[] = [];
+  car.traverse((child) => {
+    const name = child.name.toLowerCase();
+    if (name.includes('wheel') || name.includes('tire') || name.includes('roda')) {
+      wheels.push(child);
+    }
+  });
+
+  // Giroflex tático de alta intensidade no teto
+  const sirenLightRed = new THREE.PointLight(0xef4444, 0, 8);
+  sirenLightRed.position.set(0.35, 1.25, 0.0);
+  root.add(sirenLightRed);
+
+  const sirenLightBlue = new THREE.PointLight(0x38bdf8, 0, 8);
+  sirenLightBlue.position.set(-0.35, 1.25, 0.0);
+  root.add(sirenLightBlue);
+
+  return { mesh: root, wheels, sirenLightRed, sirenLightBlue };
 }
 
 /**

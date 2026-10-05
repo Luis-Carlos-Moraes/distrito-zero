@@ -5,6 +5,7 @@ import {
   LoadedCityAssets,
   preloadCityAssets,
   createPoliceCruiserFromAssets,
+  createArmoredVehicleFromAssets,
   createCharacterInstance
 } from './asset-loader-3d.js';
 import {
@@ -25,6 +26,14 @@ interface PedestrianTrack {
     speed: number;
     dir: number;
   };
+}
+
+interface Vehicle3DObject {
+  mesh: THREE.Group;
+  wheels: THREE.Object3D[];
+  sirenLightRed: THREE.PointLight;
+  sirenLightBlue: THREE.PointLight;
+  parkOffset: { x: number; z: number };
 }
 
 interface IsometricViewport3DProps {
@@ -60,12 +69,7 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     renderer: THREE.WebGLRenderer;
     sunLight: THREE.DirectionalLight;
     ambientLight: THREE.AmbientLight;
-    cruiserObj?: {
-      mesh: THREE.Group;
-      wheels: THREE.Object3D[];
-      sirenLightRed: THREE.PointLight;
-      sirenLightBlue: THREE.PointLight;
-    };
+    vehicles: Map<string, Vehicle3DObject>;
     incidentMarkers: Map<string, THREE.Group>;
     suspectCharacters: Map<string, { mesh: THREE.Group; update: (delta: number) => void }>;
     buildingMeshes: Map<string, THREE.Group>;
@@ -175,11 +179,24 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     const cityGround = createCityGroundWithKenneyAssets(assets);
     scene.add(cityGround);
 
-    // Viatura Policial Kenney
+    // 3. Viaturas da Delegacia (Viatura 01 Sedan e Viatura 02 Blindado 09 Tático)
+    const vehiclesMap = new Map<string, Vehicle3DObject>();
+
+    // Viatura 01: Sedan Patrulha
     const cruiser = createPoliceCruiserFromAssets(assets);
-    cruiser.mesh.position.set(16, 0.05, 16);
-    cruiser.mesh.rotation.y = Math.PI / 2; // Alinhada à pista
+    cruiser.mesh.position.set(16.0, 0.05, 15.4);
+    cruiser.mesh.rotation.y = Math.PI / 2;
     scene.add(cruiser.mesh);
+    vehiclesMap.set('veh-1', { ...cruiser, parkOffset: { x: 0, z: -0.6 } });
+
+    // Viatura 02: Blindado 09 Tático (Home Police)
+    const armored = createArmoredVehicleFromAssets(assets);
+    if (armored) {
+      armored.mesh.position.set(17.3, 0.05, 15.4);
+      armored.mesh.rotation.y = Math.PI / 2;
+      scene.add(armored.mesh);
+      vehiclesMap.set('veh-2', { ...armored, parkOffset: { x: 1.3, z: -0.6 } });
+    }
 
     // 4. Criação de Personagens e Pedestres Animados (Kenney)
     const pedestrians: PedestrianTrack[] = [];
@@ -258,7 +275,7 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
       renderer,
       sunLight,
       ambientLight,
-      cruiserObj: cruiser,
+      vehicles: vehiclesMap,
       incidentMarkers: new Map(),
       suspectCharacters: new Map(),
       buildingMeshes: new Map(),
@@ -333,7 +350,6 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
         renderer,
         sunLight,
         ambientLight,
-        cruiserObj,
         incidentMarkers,
         clock
       } = threeRef.current;
@@ -366,49 +382,61 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
         scene.background = new THREE.Color(0x030712);
       }
 
-      // 5. Movimentação Contínua da Viatura Policial a 60 FPS (Zero Pulos)
-      const primaryVehicle = Object.values(currentState.vehicles)[0];
-      if (primaryVehicle && cruiserObj) {
-        const targetWorldX = primaryVehicle.position.x * 4;
-        const targetWorldZ = primaryVehicle.position.y * 4;
+      // 5. Movimentação Contínua de Todas as Viaturas Policiais a 60 FPS
+      const { vehicles } = threeRef.current;
+      for (const [vehId, vehObj] of vehicles.entries()) {
+        const vehState = currentState.vehicles[vehId];
+        if (!vehState) continue;
 
-        const dx = targetWorldX - cruiserObj.mesh.position.x;
-        const dz = targetWorldZ - cruiserObj.mesh.position.z;
-        const dist = Math.hypot(dx, dz);
-
-        // Velocidade suave no mundo 3D proporcional à velocidade da viatura
-        const speed = 7.0 * (primaryVehicle.speed || 1.8);
-        const maxMove = speed * delta;
-
-        if (dist > 0.04) {
-          const step = Math.min(dist, maxMove);
-          cruiserObj.mesh.position.x += (dx / dist) * step;
-          cruiserObj.mesh.position.z += (dz / dist) * step;
-
-          // Rotação suave contínua em direção ao deslocamento
-          const targetAngle = Math.atan2(dx, dz);
-          let diff = targetAngle - cruiserObj.mesh.rotation.y;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          cruiserObj.mesh.rotation.y += diff * Math.min(1.0, 12.0 * delta);
-
-          // Rotação física realista das 4 rodas ao andar
-          for (const wheel of cruiserObj.wheels) {
-            wheel.rotation.x += step * 3.5;
-          }
-        }
-
-        // Giroflex Policial (Giro alternado vermelho e azul quando em missão)
-        const isDispatched =
-          primaryVehicle.status === 'dispatched' || primaryVehicle.status === 'on_scene';
-
-        if (isDispatched) {
-          const strobe = Math.floor(Date.now() / 110) % 2 === 0;
-          cruiserObj.sirenLightRed.intensity = strobe ? 4.5 : 0.0;
-          cruiserObj.sirenLightBlue.intensity = strobe ? 0.0 : 4.5;
+        if (vehState.status === 'parked') {
+          // Estacionado no pátio demarcado
+          vehObj.mesh.position.set(
+            16.0 + vehObj.parkOffset.x,
+            0.05,
+            16.0 + vehObj.parkOffset.z
+          );
+          vehObj.mesh.rotation.y = Math.PI / 2;
+          vehObj.sirenLightRed.intensity = 0;
+          vehObj.sirenLightBlue.intensity = 0;
         } else {
-          cruiserObj.sirenLightRed.intensity = 0;
-          cruiserObj.sirenLightBlue.intensity = 0;
+          // Deslocamento para ocorrência / retorno
+          const targetWorldX = vehState.position.x * 4;
+          const targetWorldZ = vehState.position.y * 4;
+
+          const dx = targetWorldX - vehObj.mesh.position.x;
+          const dz = targetWorldZ - vehObj.mesh.position.z;
+          const dist = Math.hypot(dx, dz);
+
+          const speed = 7.0 * (vehState.speed || 1.6);
+          const maxMove = speed * delta;
+
+          if (dist > 0.04) {
+            const step = Math.min(dist, maxMove);
+            vehObj.mesh.position.x += (dx / dist) * step;
+            vehObj.mesh.position.z += (dz / dist) * step;
+
+            const targetAngle = Math.atan2(dx, dz);
+            let diff = targetAngle - vehObj.mesh.rotation.y;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            vehObj.mesh.rotation.y += diff * Math.min(1.0, 12.0 * delta);
+
+            for (const wheel of vehObj.wheels) {
+              wheel.rotation.x += step * 3.5;
+            }
+          }
+
+          const isDispatched =
+            vehState.status === 'dispatched' || vehState.status === 'on_scene';
+
+          if (isDispatched) {
+            const strobe = Math.floor(Date.now() / 110) % 2 === 0;
+            vehObj.sirenLightRed.intensity = strobe ? 5.0 : 0.0;
+            vehObj.sirenLightBlue.intensity = strobe ? 0.0 : 5.0;
+          } else {
+            vehObj.sirenLightRed.intensity = 0;
+            vehObj.sirenLightBlue.intensity = 0;
+          }
         }
       }
 

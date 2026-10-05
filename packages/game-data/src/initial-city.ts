@@ -77,7 +77,7 @@ export const INITIAL_STATION: PoliceStation = {
   jailCapacity: 4,
   currentPrisoners: 0,
   officerIds: ['off-1', 'off-2', 'off-3', 'off-4'],
-  vehicleIds: ['veh-1'],
+  vehicleIds: ['veh-1', 'veh-2'],
   modules: [
     {
       id: 'mod-reception',
@@ -101,7 +101,7 @@ export const INITIAL_STATION: PoliceStation = {
       level: 1,
       operational: true,
       capacity: 2,
-      currentLoad: 1
+      currentLoad: 2
     }
   ]
 };
@@ -146,7 +146,8 @@ export const INITIAL_OFFICERS: Record<string, Officer> = {
     name: 'Sd. Tiago Lima',
     badgeNumber: 'DZ-103',
     rank: 'recruit',
-    status: 'idle',
+    status: 'assigned_patrol',
+    assignedVehicleId: 'veh-2',
     currentStationId: INITIAL_STATION_ID,
     experience: 40,
     attributes: {
@@ -154,7 +155,7 @@ export const INITIAL_OFFICERS: Record<string, Officer> = {
       investigation: 40,
       accuracy: 50,
       leadership: 30,
-      integrity: 60 // Suspeita sutil
+      integrity: 60
     }
   },
   'off-4': {
@@ -162,7 +163,8 @@ export const INITIAL_OFFICERS: Record<string, Officer> = {
     name: 'Det. Luísa Prado',
     badgeNumber: 'DZ-104',
     rank: 'detective',
-    status: 'idle',
+    status: 'assigned_patrol',
+    assignedVehicleId: 'veh-2',
     currentStationId: INITIAL_STATION_ID,
     experience: 310,
     attributes: {
@@ -186,5 +188,16 @@ export const INITIAL_VEHICLES: Record<string, PoliceVehicle> = {
     speed: 1.8,
     position: { x: 4, y: 4 },
     assignedOfficerIds: ['off-1', 'off-2']
+  },
+  'veh-2': {
+    id: 'veh-2',
+    name: 'Blindado 09 (Tático)',
+    model: 'tactical_armored',
+    plate: 'HOME-POLICE-09',
+    status: 'parked',
+    health: 100,
+    speed: 1.4,
+    position: { x: 4, y: 4 },
+    assignedOfficerIds: ['off-3', 'off-4']
   }
 };

@@ -40,7 +40,7 @@ export type VehicleStatus =
 export interface PoliceVehicle {
   id: string;
   name: string;
-  model: 'patrol_car' | 'suv' | 'tactical_van' | 'motorcycle';
+  model: 'patrol_car' | 'suv' | 'tactical_van' | 'tactical_armored' | 'motorcycle';
   plate: string;
   status: VehicleStatus;
   health: number; // 0 a 100%
