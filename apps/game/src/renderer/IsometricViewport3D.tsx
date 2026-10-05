@@ -80,11 +80,11 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     clock: THREE.Clock;
   } | null>(null);
 
-  // Estado da Câmera: Centrada na Delegacia com zoom aproximado para ver detalhes ricos
+  // Estado da Câmera: Centrada na Delegacia com visão equilibrada do quarteirão
   const cameraState = useRef({
-    targetX: 16.5,
-    targetZ: 16.5,
-    zoom: 7.2, // Câmera bem mais perto para ver todos os detalhes dos veículos e personagens
+    targetX: 18,
+    targetZ: 17,
+    zoom: 14.5,
     isDragging: false,
     lastMouseX: 0,
     lastMouseY: 0
@@ -641,8 +641,8 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     e.preventDefault();
     if (!threeRef.current || !containerRef.current) return;
 
-    const zoomStep = e.deltaY < 0 ? 0.90 : 1.10;
-    cameraState.current.zoom = Math.max(3.5, Math.min(22, cameraState.current.zoom * zoomStep));
+    const zoomStep = e.deltaY < 0 ? 0.92 : 1.08;
+    cameraState.current.zoom = Math.max(7.0, Math.min(26.0, cameraState.current.zoom * zoomStep));
 
     const w = containerRef.current.clientWidth;
     const h = containerRef.current.clientHeight;
@@ -660,9 +660,9 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
   // Centralizar na Delegacia
   const centerOnStation = () => {
     if (!threeRef.current || !containerRef.current) return;
-    cameraState.current.targetX = 16.5;
-    cameraState.current.targetZ = 16.5;
-    cameraState.current.zoom = 7.2;
+    cameraState.current.targetX = 18;
+    cameraState.current.targetZ = 17;
+    cameraState.current.zoom = 14.5;
 
     const w = containerRef.current.clientWidth;
     const h = containerRef.current.clientHeight;
@@ -670,8 +670,8 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     const zm = cameraState.current.zoom;
 
     const { camera } = threeRef.current;
-    camera.position.set(16.5 + 38, 38, 16.5 + 38);
-    camera.lookAt(16.5, 0, 16.5);
+    camera.position.set(18 + 38, 38, 17 + 38);
+    camera.lookAt(18, 0, 17);
     camera.left = -zm * asp;
     camera.right = zm * asp;
     camera.top = zm;
@@ -796,7 +796,7 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
           className="btn-ghost glass-panel"
           onClick={() => {
             if (!threeRef.current || !containerRef.current) return;
-            cameraState.current.zoom = Math.max(3.5, cameraState.current.zoom * 0.85);
+            cameraState.current.zoom = Math.max(7.0, cameraState.current.zoom * 0.88);
             const w = containerRef.current.clientWidth;
             const h = containerRef.current.clientHeight;
             const zm = cameraState.current.zoom;
@@ -813,7 +813,7 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
           className="btn-ghost glass-panel"
           onClick={() => {
             if (!threeRef.current || !containerRef.current) return;
-            cameraState.current.zoom = Math.min(22, cameraState.current.zoom * 1.15);
+            cameraState.current.zoom = Math.min(26.0, cameraState.current.zoom * 1.12);
             const w = containerRef.current.clientWidth;
             const h = containerRef.current.clientHeight;
             const zm = cameraState.current.zoom;

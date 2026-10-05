@@ -207,6 +207,43 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
   const suspectTexture = loadTexture('/models/characters/suspect/texture.png');
   const cityPackTexture = loadTexture('/models/city_pack/textures/color_1024x1024.jpg');
 
+  // Higieniza modelos importados removendo planos de demonstração e luzes/câmeras embutidas
+  if (hospitalBase) {
+    const toRemove: THREE.Object3D[] = [];
+    hospitalBase.traverse((child) => {
+      if (child.name.toLowerCase().includes('plane') || (child as any).isCamera || (child as any).isLight) {
+        toRemove.push(child);
+      }
+    });
+    toRemove.forEach((c) => {
+      if (c.parent) c.parent.remove(c);
+    });
+  }
+
+  if (penitentiaryBase) {
+    const toRemove: THREE.Object3D[] = [];
+    penitentiaryBase.traverse((child) => {
+      if ((child as any).isCamera || (child as any).isLight) {
+        toRemove.push(child);
+      }
+    });
+    toRemove.forEach((c) => {
+      if (c.parent) c.parent.remove(c);
+    });
+  }
+
+  if (delegaciaBase) {
+    const toRemove: THREE.Object3D[] = [];
+    delegaciaBase.traverse((child) => {
+      if ((child as any).isCamera || (child as any).isLight) {
+        toRemove.push(child);
+      }
+    });
+    toRemove.forEach((c) => {
+      if (c.parent) c.parent.remove(c);
+    });
+  }
+
   cachedCityAssets = {
     roadStraight,
     roadCrossroad,
@@ -488,7 +525,7 @@ export function createRealPoliceStation(assets: LoadedCityAssets): THREE.Group |
   const size = new THREE.Vector3();
   bbox.getSize(size);
 
-  const targetHeight = 5.2;
+  const targetHeight = 3.8;
   const currentHeight = Math.max(0.001, size.y);
   const scale = targetHeight / currentHeight;
   bldg.scale.set(scale, scale, scale);
@@ -529,7 +566,7 @@ export function createRealHospital(assets: LoadedCityAssets): THREE.Group | null
   bbox.getSize(size);
 
   // Proporção harmônica para o quarteirão
-  const targetHeight = 4.8;
+  const targetHeight = 4.2;
   const currentHeight = Math.max(0.001, size.y);
   const scale = targetHeight / currentHeight;
   bldg.scale.set(scale, scale, scale);
@@ -573,7 +610,7 @@ export function createRealPenitentiary(assets: LoadedCityAssets): THREE.Group | 
   const size = new THREE.Vector3();
   bbox.getSize(size);
 
-  const targetWidth = 5.8;
+  const targetWidth = 5.2;
   const currentWidth = Math.max(0.001, size.x, size.z);
   const scale = targetWidth / currentWidth;
   bldg.scale.set(scale, scale, scale);
