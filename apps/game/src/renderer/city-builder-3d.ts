@@ -175,19 +175,6 @@ export function createCityGroundWithKenneyAssets(assets: LoadedCityAssets): THRE
     city.add(tree);
   }
 
-  // 5. Veículos Civis Estacionados (Para a cidade parecer habitada e viva)
-  const taxi = assets.taxi.clone(true);
-  taxi.scale.set(0.65, 0.65, 0.65);
-  taxi.position.set(28.0, 0.02, 14.5);
-  taxi.rotation.y = 0;
-  city.add(taxi);
-
-  const sedan = assets.sedan.clone(true);
-  sedan.scale.set(0.65, 0.65, 0.65);
-  sedan.position.set(10.2, 0.02, 24.0);
-  sedan.rotation.y = Math.PI / 2;
-  city.add(sedan);
-
   // Arranha-céu no horizonte leste (skyline de fundo, sem cobrir a delegacia)
   const skyscraper = assets.buildingSkyscraper.clone(true);
   skyscraper.scale.set(2.4, 2.4, 2.4);

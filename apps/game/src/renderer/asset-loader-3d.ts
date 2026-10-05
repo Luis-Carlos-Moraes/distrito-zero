@@ -102,7 +102,6 @@ export interface CharacterSkinTextures {
 }
 
 export interface LoadedCityAssets {
-  policeCarBase: THREE.Group;
   roadStraight: THREE.Group;
   roadCrossroad: THREE.Group;
   roadBend: THREE.Group;
@@ -115,9 +114,12 @@ export interface LoadedCityAssets {
   buildingD: THREE.Group;
   buildingE: THREE.Group;
   buildingSkyscraper: THREE.Group;
-  taxi: THREE.Group;
-  sedan: THREE.Group;
-  // Veículo Blindado Tático 09
+  // Veículo 01: Ford Crown Victoria Police Interceptor
+  crownVicBase: THREE.Group | null;
+  crownVicBodyTexture: THREE.Texture;
+  crownVicWheelTexture: THREE.Texture;
+  crownVicLightTexture: THREE.Texture;
+  // Veículo 02: Blindado Tático 09 (Home Police)
   armoredCarBase: THREE.Group | null;
   armoredTexture: THREE.Texture;
   // Personagens e Animações
@@ -133,7 +135,6 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
   if (cachedCityAssets) return cachedCityAssets;
 
   const [
-    policeCarBase,
     roadStraight,
     roadCrossroad,
     roadBend,
@@ -146,14 +147,12 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     buildingD,
     buildingE,
     buildingSkyscraper,
-    taxi,
-    sedan,
     characterBase,
     idleClip,
     runClip,
+    crownVicBase,
     armoredCarBase
   ] = await Promise.all([
-    loadGLBModel('/models/vehicles/police.glb'),
     loadGLBModel('/models/roads/road-straight.glb'),
     loadGLBModel('/models/roads/road-crossroad.glb'),
     loadGLBModel('/models/roads/road-bend.glb'),
@@ -166,11 +165,10 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     loadGLBModel('/models/buildings/building-d.glb'),
     loadGLBModel('/models/buildings/building-e.glb'),
     loadGLBModel('/models/buildings/building-skyscraper-a.glb'),
-    loadGLBModel('/models/vehicles/taxi.glb'),
-    loadGLBModel('/models/vehicles/sedan.glb'),
     safeLoadFBX('/models/characters/Model/characterMedium.fbx'),
     safeLoadAnim('/models/characters/Animations/idle.fbx'),
     safeLoadAnim('/models/characters/Animations/run.fbx'),
+    safeLoadFBX('/models/vehicles/crown_vic/crown_vic.fbx'),
     safeLoadFBX('/models/vehicles/armored/armored_vehicle.fbx')
   ]);
 
@@ -181,10 +179,12 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     cyborg: loadTexture('/models/characters/Skins/cyborgFemaleA.png')
   };
 
+  const crownVicBodyTexture = loadTexture('/models/vehicles/crown_vic/body.png');
+  const crownVicWheelTexture = loadTexture('/models/vehicles/crown_vic/wheel.png');
+  const crownVicLightTexture = loadTexture('/models/vehicles/crown_vic/roof_light.png');
   const armoredTexture = loadTexture('/models/vehicles/armored/TEXTURE.png');
 
   cachedCityAssets = {
-    policeCarBase,
     roadStraight,
     roadCrossroad,
     roadBend,
@@ -197,8 +197,10 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     buildingD,
     buildingE,
     buildingSkyscraper,
-    taxi,
-    sedan,
+    crownVicBase,
+    crownVicBodyTexture,
+    crownVicWheelTexture,
+    crownVicLightTexture,
     armoredCarBase,
     armoredTexture,
     characterBase,
@@ -211,7 +213,87 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
 }
 
 /**
- * Monta o modelo do Blindado Tático 09 (Home Police) com texturas e giroflex
+ * Monta o modelo da Viatura 01: Ford Crown Victoria Police Interceptor
+ */
+export function createCrownVictoriaFromAssets(assets: LoadedCityAssets): {
+  mesh: THREE.Group;
+  wheels: THREE.Object3D[];
+  sirenLightRed: THREE.PointLight;
+  sirenLightBlue: THREE.PointLight;
+} | null {
+  if (!assets.crownVicBase) return null;
+
+  const root = new THREE.Group();
+  const car = assets.crownVicBase.clone(true);
+
+  const bodyTex = assets.crownVicBodyTexture;
+  const wheelTex = assets.crownVicWheelTexture;
+  const lightTex = assets.crownVicLightTexture;
+
+  car.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+
+      const name = mesh.name.toLowerCase();
+      let tex = bodyTex;
+      if (name.includes('wheel') || name.includes('tire') || name.includes('rim') || name.includes('roda')) {
+        tex = wheelTex;
+      } else if (name.includes('light') || name.includes('siren') || name.includes('bar') || name.includes('roof')) {
+        tex = lightTex;
+      }
+
+      mesh.material = new THREE.MeshStandardMaterial({
+        map: tex,
+        roughness: 0.45,
+        metalness: 0.25
+      });
+    }
+  });
+
+  const bbox = new THREE.Box3().setFromObject(car);
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+
+  if (size.x > size.z) {
+    car.rotation.y = Math.PI / 2;
+  }
+
+  // Sedan de patrulha proporcional: ~2.1 unidades de comprimento
+  const lengthDim = Math.max(size.x, size.z);
+  const targetLength = 2.1;
+  const scale = targetLength / Math.max(0.001, lengthDim);
+  car.scale.set(scale, scale, scale);
+
+  const scaledBbox = new THREE.Box3().setFromObject(car);
+  if (scaledBbox.min.y < -0.001) {
+    car.position.y = -scaledBbox.min.y;
+  }
+
+  root.add(car);
+
+  const wheels: THREE.Object3D[] = [];
+  car.traverse((child) => {
+    const name = child.name.toLowerCase();
+    if (name.includes('wheel') || name.includes('tire') || name.includes('roda')) {
+      wheels.push(child);
+    }
+  });
+
+  const sirenLightRed = new THREE.PointLight(0xef4444, 0, 8);
+  sirenLightRed.position.set(0.28, 0.95, 0.0);
+  root.add(sirenLightRed);
+
+  const sirenLightBlue = new THREE.PointLight(0x38bdf8, 0, 8);
+  sirenLightBlue.position.set(-0.28, 0.95, 0.0);
+  root.add(sirenLightBlue);
+
+  return { mesh: root, wheels, sirenLightRed, sirenLightBlue };
+}
+
+/**
+ * Monta o modelo da Viatura 02: Blindado Tático 09 (Home Police)
  */
 export function createArmoredVehicleFromAssets(assets: LoadedCityAssets): {
   mesh: THREE.Group;
@@ -224,7 +306,6 @@ export function createArmoredVehicleFromAssets(assets: LoadedCityAssets): {
   const root = new THREE.Group();
   const car = assets.armoredCarBase.clone(true);
 
-  // Aplicar a textura tática extraída do TEXTURE.rar
   const tex = assets.armoredTexture;
   car.traverse((child) => {
     if ((child as THREE.Mesh).isMesh) {
@@ -239,23 +320,19 @@ export function createArmoredVehicleFromAssets(assets: LoadedCityAssets): {
     }
   });
 
-  // Normalização de dimensões do modelo FBX
   const bbox = new THREE.Box3().setFromObject(car);
   const size = new THREE.Vector3();
   bbox.getSize(size);
 
-  // Se o modelo estiver orientado ao longo de X, rotacionar para +Z
   if (size.x > size.z) {
     car.rotation.y = Math.PI / 2;
   }
 
-  // Comprimento proporcional tático (~2.3 unidades no mapa)
   const maxDim = Math.max(size.x, size.z);
   const targetLength = 2.3;
   const scale = targetLength / Math.max(0.001, maxDim);
   car.scale.set(scale, scale, scale);
 
-  // Alinhar ao nível do chão
   const scaledBbox = new THREE.Box3().setFromObject(car);
   if (scaledBbox.min.y < -0.001) {
     car.position.y = -scaledBbox.min.y;
@@ -263,7 +340,6 @@ export function createArmoredVehicleFromAssets(assets: LoadedCityAssets): {
 
   root.add(car);
 
-  // Localizar rodas para rolagem
   const wheels: THREE.Object3D[] = [];
   car.traverse((child) => {
     const name = child.name.toLowerCase();
@@ -272,47 +348,12 @@ export function createArmoredVehicleFromAssets(assets: LoadedCityAssets): {
     }
   });
 
-  // Giroflex tático de alta intensidade no teto
   const sirenLightRed = new THREE.PointLight(0xef4444, 0, 8);
   sirenLightRed.position.set(0.35, 1.25, 0.0);
   root.add(sirenLightRed);
 
   const sirenLightBlue = new THREE.PointLight(0x38bdf8, 0, 8);
   sirenLightBlue.position.set(-0.35, 1.25, 0.0);
-  root.add(sirenLightBlue);
-
-  return { mesh: root, wheels, sirenLightRed, sirenLightBlue };
-}
-
-/**
- * Monta o modelo completo da Viatura Policial com rodas funcionais e luzes do giroflex
- */
-export function createPoliceCruiserFromAssets(assets: LoadedCityAssets): {
-  mesh: THREE.Group;
-  wheels: THREE.Object3D[];
-  sirenLightRed: THREE.PointLight;
-  sirenLightBlue: THREE.PointLight;
-} {
-  const root = new THREE.Group();
-  const car = assets.policeCarBase.clone(true);
-  car.scale.set(0.7, 0.7, 0.7);
-  root.add(car);
-
-  // Localizar as 4 rodas para permitir rotação realista na rolagem
-  const wheels: THREE.Object3D[] = [];
-  car.traverse((child) => {
-    if (child.name.toLowerCase().includes('wheel')) {
-      wheels.push(child);
-    }
-  });
-
-  // Luzes do Giroflex na barra superior do teto (Y ~ 0.8 no espaço escalado)
-  const sirenLightRed = new THREE.PointLight(0xef4444, 0, 8);
-  sirenLightRed.position.set(0.2, 0.85, 0.0);
-  root.add(sirenLightRed);
-
-  const sirenLightBlue = new THREE.PointLight(0x38bdf8, 0, 8);
-  sirenLightBlue.position.set(-0.2, 0.85, 0.0);
   root.add(sirenLightBlue);
 
   return { mesh: root, wheels, sirenLightRed, sirenLightBlue };

@@ -180,20 +180,20 @@ export const INITIAL_OFFICERS: Record<string, Officer> = {
 export const INITIAL_VEHICLES: Record<string, PoliceVehicle> = {
   'veh-1': {
     id: 'veh-1',
-    name: 'Viatura 01 (Sedan)',
+    name: 'Ford Crown Police (Interceptor)',
     model: 'patrol_car',
     plate: 'DZ-001',
     status: 'parked',
-    health: 75,
+    health: 85,
     speed: 1.8,
     position: { x: 4, y: 4 },
     assignedOfficerIds: ['off-1', 'off-2']
   },
   'veh-2': {
     id: 'veh-2',
-    name: 'Blindado 09 (Tático)',
+    name: 'Home Police 09 (Blindado)',
     model: 'tactical_armored',
-    plate: 'HOME-POLICE-09',
+    plate: 'DZ-009',
     status: 'parked',
     health: 100,
     speed: 1.4,

@@ -4,7 +4,7 @@ import { GameState } from '@distrito-zero/shared-types';
 import {
   LoadedCityAssets,
   preloadCityAssets,
-  createPoliceCruiserFromAssets,
+  createCrownVictoriaFromAssets,
   createArmoredVehicleFromAssets,
   createCharacterInstance
 } from './asset-loader-3d.js';
@@ -182,12 +182,14 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     // 3. Viaturas da Delegacia (Viatura 01 Sedan e Viatura 02 Blindado 09 Tático)
     const vehiclesMap = new Map<string, Vehicle3DObject>();
 
-    // Viatura 01: Sedan Patrulha
-    const cruiser = createPoliceCruiserFromAssets(assets);
-    cruiser.mesh.position.set(16.0, 0.05, 15.4);
-    cruiser.mesh.rotation.y = Math.PI / 2;
-    scene.add(cruiser.mesh);
-    vehiclesMap.set('veh-1', { ...cruiser, parkOffset: { x: 0, z: -0.6 } });
+    // Viatura 01: Ford Crown Victoria Police Interceptor
+    const crownVic = createCrownVictoriaFromAssets(assets);
+    if (crownVic) {
+      crownVic.mesh.position.set(16.0, 0.05, 15.4);
+      crownVic.mesh.rotation.y = Math.PI / 2;
+      scene.add(crownVic.mesh);
+      vehiclesMap.set('veh-1', { ...crownVic, parkOffset: { x: 0, z: -0.6 } });
+    }
 
     // Viatura 02: Blindado 09 Tático (Home Police)
     const armored = createArmoredVehicleFromAssets(assets);
