@@ -6,13 +6,16 @@ import {
   preloadCityAssets,
   createCrownVictoriaFromAssets,
   createArmoredVehicleFromAssets,
-  createCharacterInstance
+  createCharacterInstance,
+  createSuspectInstance
 } from './asset-loader-3d.js';
 import {
   createCityGroundWithKenneyAssets,
   createPoliceStationMeshFromAssets,
   createCommercialBuildingFromAssets,
   createResidentialBuildingFromAssets,
+  createHospitalBuildingFromAssets,
+  createPenitentiaryBuildingFromAssets,
   createIncidentMarkerMesh
 } from './city-builder-3d.js';
 
@@ -77,11 +80,11 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     clock: THREE.Clock;
   } | null>(null);
 
-  // Estado da Câmera: Centrada na Delegacia Central (16, 16)
+  // Estado da Câmera: Centrada na Delegacia com zoom aproximado para ver detalhes ricos
   const cameraState = useRef({
-    targetX: 18,
-    targetZ: 18,
-    zoom: 16,
+    targetX: 16.5,
+    targetZ: 16.5,
+    zoom: 7.2, // Câmera bem mais perto para ver todos os detalhes dos veículos e personagens
     isDragging: false,
     lastMouseX: 0,
     lastMouseY: 0
@@ -326,6 +329,10 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
         let mesh: THREE.Group;
         if (bldg.type === 'station') {
           mesh = createPoliceStationMeshFromAssets(assets);
+        } else if (bldg.id === 'bldg-hospital') {
+          mesh = createHospitalBuildingFromAssets(assets);
+        } else if (bldg.id === 'bldg-penitentiary') {
+          mesh = createPenitentiaryBuildingFromAssets(assets);
         } else if (bldg.type === 'commercial') {
           mesh = createCommercialBuildingFromAssets(bldg.id, bldg.stage, assets);
         } else {
@@ -487,9 +494,11 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
           scene.add(marker);
           incidentMarkers.set(inc.id, marker);
 
-          // Suspeito na cena do crime
+          // Suspeito na cena do crime (Modelo urbano 3D com texturas)
           if (assetsRef.current) {
-            const suspect = createCharacterInstance(assetsRef.current, 'criminal', 'idle');
+            const suspect =
+              createSuspectInstance(assetsRef.current) ||
+              createCharacterInstance(assetsRef.current, 'criminal', 'idle');
             if (suspect) {
               suspect.mesh.position.set(
                 inc.location.x * 4 + 0.6,
@@ -536,11 +545,32 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
           const screenX = (pos.x * 0.5 + 0.5) * w;
           const screenY = (pos.y * -0.5 + 0.5) * h;
 
+          let label = bldg.name.replace(/ \(.*\)/, '');
+          let icon = '🏠';
+          let badgeType: 'station' | 'commercial' | 'residential' | 'incident' = 'residential';
+
+          if (bldg.type === 'station') {
+            label = 'DELEGACIA CENTRAL';
+            icon = '🛡️';
+            badgeType = 'station';
+          } else if (bldg.id === 'bldg-hospital') {
+            label = 'HOSPITAL GERAL';
+            icon = '🏥';
+            badgeType = 'commercial';
+          } else if (bldg.id === 'bldg-penitentiary') {
+            label = 'PRESÍDIO REGIONAL';
+            icon = '⛓️';
+            badgeType = 'station';
+          } else if (bldg.type === 'commercial') {
+            icon = '🏪';
+            badgeType = 'commercial';
+          }
+
           pins.push({
             id: bldg.id,
-            label: bldg.type === 'station' ? 'DELEGACIA' : bldg.name.replace(/ \(.*\)/, ''),
-            icon: bldg.type === 'station' ? '🛡️' : bldg.type === 'commercial' ? '🏪' : '🏠',
-            badgeType: bldg.type === 'station' ? 'station' : 'commercial',
+            label,
+            icon,
+            badgeType,
             screenX,
             screenY,
             visible: pos.z < 1
@@ -611,8 +641,8 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     e.preventDefault();
     if (!threeRef.current || !containerRef.current) return;
 
-    const zoomStep = e.deltaY < 0 ? 0.92 : 1.08;
-    cameraState.current.zoom = Math.max(10, Math.min(32, cameraState.current.zoom * zoomStep));
+    const zoomStep = e.deltaY < 0 ? 0.90 : 1.10;
+    cameraState.current.zoom = Math.max(3.5, Math.min(22, cameraState.current.zoom * zoomStep));
 
     const w = containerRef.current.clientWidth;
     const h = containerRef.current.clientHeight;
@@ -630,21 +660,22 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
   // Centralizar na Delegacia
   const centerOnStation = () => {
     if (!threeRef.current || !containerRef.current) return;
-    cameraState.current.targetX = 18;
-    cameraState.current.targetZ = 18;
-    cameraState.current.zoom = 16;
+    cameraState.current.targetX = 16.5;
+    cameraState.current.targetZ = 16.5;
+    cameraState.current.zoom = 7.2;
 
     const w = containerRef.current.clientWidth;
     const h = containerRef.current.clientHeight;
     const asp = w / h;
+    const zm = cameraState.current.zoom;
 
     const { camera } = threeRef.current;
-    camera.position.set(56, 38, 56);
-    camera.lookAt(18, 0, 18);
-    camera.left = -16 * asp;
-    camera.right = 16 * asp;
-    camera.top = 16;
-    camera.bottom = -16;
+    camera.position.set(16.5 + 38, 38, 16.5 + 38);
+    camera.lookAt(16.5, 0, 16.5);
+    camera.left = -zm * asp;
+    camera.right = zm * asp;
+    camera.top = zm;
+    camera.bottom = -zm;
     camera.updateProjectionMatrix();
   };
 
@@ -765,7 +796,7 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
           className="btn-ghost glass-panel"
           onClick={() => {
             if (!threeRef.current || !containerRef.current) return;
-            cameraState.current.zoom = Math.max(10, cameraState.current.zoom * 0.88);
+            cameraState.current.zoom = Math.max(3.5, cameraState.current.zoom * 0.85);
             const w = containerRef.current.clientWidth;
             const h = containerRef.current.clientHeight;
             const zm = cameraState.current.zoom;
@@ -782,7 +813,7 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
           className="btn-ghost glass-panel"
           onClick={() => {
             if (!threeRef.current || !containerRef.current) return;
-            cameraState.current.zoom = Math.min(32, cameraState.current.zoom * 1.12);
+            cameraState.current.zoom = Math.min(22, cameraState.current.zoom * 1.15);
             const w = containerRef.current.clientWidth;
             const h = containerRef.current.clientHeight;
             const zm = cameraState.current.zoom;

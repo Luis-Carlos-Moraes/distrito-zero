@@ -31,6 +31,24 @@ export const INITIAL_DISTRICT: DistrictState = {
       condition: 40
     },
     {
+      id: 'bldg-hospital',
+      districtId: INITIAL_DISTRICT_ID,
+      name: 'Hospital Geral Regional',
+      type: 'public',
+      position: { x: 7, y: 6 },
+      stage: 'recovered',
+      condition: 85
+    },
+    {
+      id: 'bldg-penitentiary',
+      districtId: INITIAL_DISTRICT_ID,
+      name: 'Presídio Estadual Central',
+      type: 'public',
+      position: { x: 2, y: 2 },
+      stage: 'degraded',
+      condition: 50
+    },
+    {
       id: 'bldg-com-1',
       districtId: INITIAL_DISTRICT_ID,
       name: 'Mercearia do Zé',

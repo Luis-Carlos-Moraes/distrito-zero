@@ -1,5 +1,10 @@
 import * as THREE from 'three';
-import { LoadedCityAssets } from './asset-loader-3d.js';
+import {
+  LoadedCityAssets,
+  createRealPoliceStation,
+  createRealHospital,
+  createRealPenitentiary
+} from './asset-loader-3d.js';
 
 export const CITY_MATERIALS = {
   grass: new THREE.MeshStandardMaterial({
@@ -192,27 +197,94 @@ export function createPoliceStationMeshFromAssets(assets: LoadedCityAssets): THR
   const station = new THREE.Group();
 
   // Pátio com vaga e calçada da delegacia
-  const yardGeo = new THREE.BoxGeometry(5.8, 0.06, 5.8);
+  const yardGeo = new THREE.BoxGeometry(6.6, 0.06, 6.6);
   const yardMesh = new THREE.Mesh(yardGeo, CITY_MATERIALS.stationYard);
-  yardMesh.position.set(-1.8, 0.03, -1.8);
+  yardMesh.position.set(-1.0, 0.03, -1.0);
   yardMesh.receiveShadow = true;
   station.add(yardMesh);
 
-  // Faixas amarelas da vaga de viatura
+  // Faixas amarelas das vagas de viatura
   const lineGeo = new THREE.BoxGeometry(0.1, 0.02, 2.2);
   const l1 = new THREE.Mesh(lineGeo, CITY_MATERIALS.parkingYellow);
-  l1.position.set(0.2, 0.07, -0.6);
+  l1.position.set(-0.2, 0.07, -0.6);
   const l2 = new THREE.Mesh(lineGeo, CITY_MATERIALS.parkingYellow);
-  l2.position.set(1.4, 0.07, -0.6);
-  station.add(l1, l2);
+  l2.position.set(0.9, 0.07, -0.6);
+  const l3 = new THREE.Mesh(lineGeo, CITY_MATERIALS.parkingYellow);
+  l3.position.set(2.0, 0.07, -0.6);
+  station.add(l1, l2, l3);
 
-  // Modelo Kenney do Prédio da Delegacia
-  const bldg = assets.stationBuilding.clone(true);
-  bldg.scale.set(2.8, 2.8, 2.8);
-  bldg.position.set(-2.2, 0.06, -2.2);
-  station.add(bldg);
+  // Prédio da Delegacia: Usa o modelo realista FBX
+  const realBldg = createRealPoliceStation(assets);
+  if (realBldg) {
+    realBldg.position.set(-2.0, 0.06, -2.0);
+    realBldg.rotation.y = -Math.PI / 4;
+    station.add(realBldg);
+  } else {
+    const bldg = assets.stationBuilding.clone(true);
+    bldg.scale.set(2.8, 2.8, 2.8);
+    bldg.position.set(-2.2, 0.06, -2.2);
+    station.add(bldg);
+  }
 
   return station;
+}
+
+/**
+ * Cria o Hospital Geral Regional com heliponto
+ */
+export function createHospitalBuildingFromAssets(assets: LoadedCityAssets): THREE.Group {
+  const group = new THREE.Group();
+
+  const lot = new THREE.Mesh(
+    new THREE.BoxGeometry(6.4, 0.06, 6.4),
+    CITY_MATERIALS.sidewalkTile
+  );
+  lot.position.set(0, 0.03, 0);
+  lot.receiveShadow = true;
+  group.add(lot);
+
+  const realHosp = createRealHospital(assets);
+  if (realHosp) {
+    realHosp.position.set(0, 0.06, 0);
+    realHosp.rotation.y = -Math.PI / 4;
+    group.add(realHosp);
+  } else {
+    const bldg = assets.buildingC.clone(true);
+    bldg.scale.set(2.8, 2.8, 2.8);
+    bldg.position.set(0, 0.06, 0);
+    group.add(bldg);
+  }
+
+  return group;
+}
+
+/**
+ * Cria a Penitenciária / Presídio Regional
+ */
+export function createPenitentiaryBuildingFromAssets(assets: LoadedCityAssets): THREE.Group {
+  const group = new THREE.Group();
+
+  const lot = new THREE.Mesh(
+    new THREE.BoxGeometry(6.6, 0.06, 6.6),
+    CITY_MATERIALS.stationYard
+  );
+  lot.position.set(0, 0.03, 0);
+  lot.receiveShadow = true;
+  group.add(lot);
+
+  const realPen = createRealPenitentiary(assets);
+  if (realPen) {
+    realPen.position.set(0, 0.06, 0);
+    realPen.rotation.y = Math.PI / 4;
+    group.add(realPen);
+  } else {
+    const bldg = assets.buildingA.clone(true);
+    bldg.scale.set(2.8, 2.8, 2.8);
+    bldg.position.set(0, 0.06, 0);
+    group.add(bldg);
+  }
+
+  return group;
 }
 
 /**

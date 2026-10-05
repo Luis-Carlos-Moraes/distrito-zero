@@ -127,6 +127,15 @@ export interface LoadedCityAssets {
   idleClip: THREE.AnimationClip | null;
   runClip: THREE.AnimationClip | null;
   skins: CharacterSkinTextures;
+  // Novos Modelos de Construção e Personagens
+  delegaciaBase: THREE.Group | null;
+  hospitalBase: THREE.Group | null;
+  penitentiaryBase: THREE.Group | null;
+  parkingBase: THREE.Group | null;
+  suspectBase: THREE.Group | null;
+  suspectTexture: THREE.Texture;
+  cityPackBase: THREE.Group | null;
+  cityPackTexture: THREE.Texture;
 }
 
 let cachedCityAssets: LoadedCityAssets | null = null;
@@ -151,7 +160,13 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     idleClip,
     runClip,
     crownVicBase,
-    armoredCarBase
+    armoredCarBase,
+    delegaciaBase,
+    hospitalBase,
+    penitentiaryBase,
+    parkingBase,
+    suspectBase,
+    cityPackBase
   ] = await Promise.all([
     loadGLBModel('/models/roads/road-straight.glb'),
     loadGLBModel('/models/roads/road-crossroad.glb'),
@@ -169,7 +184,13 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     safeLoadAnim('/models/characters/Animations/idle.fbx'),
     safeLoadAnim('/models/characters/Animations/run.fbx'),
     safeLoadFBX('/models/vehicles/crown_vic/crown_vic.fbx'),
-    safeLoadFBX('/models/vehicles/armored/armored_vehicle.fbx')
+    safeLoadFBX('/models/vehicles/armored/armored_vehicle.fbx'),
+    safeLoadFBX('/models/buildings/delegacia/delegacia.fbx'),
+    safeLoadFBX('/models/buildings/hospital/hospital.fbx'),
+    safeLoadFBX('/models/buildings/penitentiary/penitentiary.fbx'),
+    safeLoadFBX('/models/buildings/parking/parking.fbx'),
+    safeLoadFBX('/models/characters/suspect/suspect.fbx'),
+    safeLoadFBX('/models/city_pack/LowPoly_City_01Ready.fbx')
   ]);
 
   const skins: CharacterSkinTextures = {
@@ -183,6 +204,8 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
   const crownVicWheelTexture = loadTexture('/models/vehicles/crown_vic/wheel.png');
   const crownVicLightTexture = loadTexture('/models/vehicles/crown_vic/roof_light.png');
   const armoredTexture = loadTexture('/models/vehicles/armored/TEXTURE.png');
+  const suspectTexture = loadTexture('/models/characters/suspect/texture.png');
+  const cityPackTexture = loadTexture('/models/city_pack/textures/color_1024x1024.jpg');
 
   cachedCityAssets = {
     roadStraight,
@@ -206,7 +229,15 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     characterBase,
     idleClip,
     runClip,
-    skins
+    skins,
+    delegaciaBase,
+    hospitalBase,
+    penitentiaryBase,
+    parkingBase,
+    suspectBase,
+    suspectTexture,
+    cityPackBase,
+    cityPackTexture
   };
 
   return cachedCityAssets;
@@ -430,3 +461,222 @@ export function createCharacterInstance(
 
   return { mesh: container, mixer, update };
 }
+
+/**
+ * Cria a nova Delegacia Policial Realista FBX
+ */
+export function createRealPoliceStation(assets: LoadedCityAssets): THREE.Group | null {
+  if (!assets.delegaciaBase) return null;
+  const root = new THREE.Group();
+  const bldg = assets.delegaciaBase.clone(true);
+
+  // Limpa câmeras e luzes embutidas no arquivo FBX se houver
+  const toRemove: THREE.Object3D[] = [];
+  bldg.traverse((child) => {
+    if ((child as any).isCamera || (child as any).isLight) {
+      toRemove.push(child);
+    }
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    }
+  });
+  toRemove.forEach((c) => c.parent?.remove(c));
+
+  const bbox = new THREE.Box3().setFromObject(bldg);
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+
+  const targetHeight = 5.2;
+  const currentHeight = Math.max(0.001, size.y);
+  const scale = targetHeight / currentHeight;
+  bldg.scale.set(scale, scale, scale);
+
+  const scaledBbox = new THREE.Box3().setFromObject(bldg);
+  if (scaledBbox.min.y < -0.001) {
+    bldg.position.y = -scaledBbox.min.y;
+  }
+
+  root.add(bldg);
+  return root;
+}
+
+/**
+ * Cria o novo Hospital Geral Realista FBX (com letreiro e heliponto)
+ */
+export function createRealHospital(assets: LoadedCityAssets): THREE.Group | null {
+  if (!assets.hospitalBase) return null;
+  const root = new THREE.Group();
+  const bldg = assets.hospitalBase.clone(true);
+
+  // Remove chão escuro de demonstração ("Plane") e câmeras/luzes embutidas
+  const toRemove: THREE.Object3D[] = [];
+  bldg.traverse((child) => {
+    if (child.name.toLowerCase() === 'plane' || (child as any).isCamera || (child as any).isLight) {
+      toRemove.push(child);
+    }
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    }
+  });
+  toRemove.forEach((c) => c.parent?.remove(c));
+
+  const bbox = new THREE.Box3().setFromObject(bldg);
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+
+  // Proporção harmônica para o quarteirão
+  const targetHeight = 4.8;
+  const currentHeight = Math.max(0.001, size.y);
+  const scale = targetHeight / currentHeight;
+  bldg.scale.set(scale, scale, scale);
+
+  // Centraliza a origem no chão
+  const scaledBbox = new THREE.Box3().setFromObject(bldg);
+  const center = new THREE.Vector3();
+  scaledBbox.getCenter(center);
+  bldg.position.x = -center.x;
+  bldg.position.z = -center.z;
+  if (scaledBbox.min.y < -0.001) {
+    bldg.position.y = -scaledBbox.min.y;
+  }
+
+  root.add(bldg);
+  return root;
+}
+
+/**
+ * Cria o novo Presídio / Penitenciária Regional FBX
+ */
+export function createRealPenitentiary(assets: LoadedCityAssets): THREE.Group | null {
+  if (!assets.penitentiaryBase) return null;
+  const root = new THREE.Group();
+  const bldg = assets.penitentiaryBase.clone(true);
+
+  const toRemove: THREE.Object3D[] = [];
+  bldg.traverse((child) => {
+    if ((child as any).isCamera || (child as any).isLight) {
+      toRemove.push(child);
+    }
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+    }
+  });
+  toRemove.forEach((c) => c.parent?.remove(c));
+
+  const bbox = new THREE.Box3().setFromObject(bldg);
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+
+  const targetWidth = 5.8;
+  const currentWidth = Math.max(0.001, size.x, size.z);
+  const scale = targetWidth / currentWidth;
+  bldg.scale.set(scale, scale, scale);
+
+  const scaledBbox = new THREE.Box3().setFromObject(bldg);
+  if (scaledBbox.min.y < -0.001) {
+    bldg.position.y = -scaledBbox.min.y;
+  }
+
+  root.add(bldg);
+  return root;
+}
+
+/**
+ * Cria o Estacionamento das Viaturas Policiais FBX
+ */
+export function createRealParkingLot(assets: LoadedCityAssets): THREE.Group | null {
+  if (!assets.parkingBase) return null;
+  const root = new THREE.Group();
+  const park = assets.parkingBase.clone(true);
+
+  park.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.receiveShadow = true;
+      if (mesh.material) {
+        const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+        const color = (mat as any).color ? (mat as any).color.clone() : new THREE.Color(0x334155);
+        mesh.material = new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.85,
+          metalness: 0.05
+        });
+      }
+    }
+  });
+
+  const bbox = new THREE.Box3().setFromObject(park);
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+
+  const targetWidth = 6.4;
+  const currentMax = Math.max(0.001, size.x, size.z);
+  const scale = targetWidth / currentMax;
+  park.scale.set(scale, scale, scale);
+
+  const scaledBbox = new THREE.Box3().setFromObject(park);
+  if (scaledBbox.min.y < -0.001) {
+    park.position.y = -scaledBbox.min.y;
+  }
+
+  root.add(park);
+  return root;
+}
+
+/**
+ * Cria o Suspeito / Criminoso urbano 3D com texturas e animação
+ */
+export function createSuspectInstance(assets: LoadedCityAssets): CharacterInstance | null {
+  if (!assets.suspectBase) return null;
+  const root = SkeletonUtils.clone(assets.suspectBase) as THREE.Group;
+
+  root.traverse((child) => {
+    if ((child as THREE.SkinnedMesh).isSkinnedMesh || (child as THREE.Mesh).isMesh) {
+      const mesh = child as THREE.Mesh;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.material = new THREE.MeshStandardMaterial({
+        map: assets.suspectTexture,
+        roughness: 0.65,
+        metalness: 0.15
+      });
+    }
+  });
+
+  const bbox = new THREE.Box3().setFromObject(root);
+  const currentHeight = Math.max(0.001, bbox.max.y - bbox.min.y);
+  const targetHeight = 1.15;
+  const scale = targetHeight / currentHeight;
+  root.scale.set(scale, scale, scale);
+
+  const container = new THREE.Group();
+  container.add(root);
+
+  const minY = bbox.min.y * scale;
+  if (minY < -0.001) {
+    root.position.y = -minY;
+  }
+
+  let mixer: THREE.AnimationMixer | undefined;
+  if (assets.suspectBase.animations && assets.suspectBase.animations.length > 0) {
+    mixer = new THREE.AnimationMixer(root);
+    const clip = assets.suspectBase.animations[0];
+    const action = mixer.clipAction(clip);
+    action.play();
+  }
+
+  const update = (delta: number) => {
+    if (mixer) {
+      mixer.update(delta);
+    }
+  };
+
+  return { mesh: container, mixer, update };
+}
+
