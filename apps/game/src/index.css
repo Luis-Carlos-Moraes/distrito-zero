@@ -55,17 +55,29 @@ body {
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
+/* Raiz do jogo: mapa em tela cheia + HUD flutuante */
+.game-root {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
 .hud-header {
-  height: 64px;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 18px;
-  border-bottom: 1px solid var(--border-subtle);
-  background: rgba(10, 14, 24, 0.95);
-  backdrop-filter: blur(16px);
   z-index: 100;
-  gap: 16px;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.hud-header > * {
+  pointer-events: auto;
 }
 
 /* Cápsula de Nível */
@@ -73,9 +85,6 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
   padding: 6px 14px;
 }
 
@@ -102,23 +111,39 @@ body {
 .hud-capsules-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .hud-pill {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(16, 22, 36, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  height: 42px;
+  background: rgba(10, 15, 26, 0.72);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
   padding: 6px 14px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.hud-pill:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .hud-pill.budget-pill {
-  border-color: rgba(16, 185, 129, 0.3);
-  background: rgba(6, 78, 59, 0.2);
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(6, 40, 32, 0.72);
+}
+
+.hud-time-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
 }
 
 .pill-value {
@@ -151,81 +176,99 @@ body {
   box-shadow: 0 0 10px var(--accent-police-glow);
 }
 
-/* Dock Inferior de Navegação */
+/* Dock Inferior de Navegação (flutuante) */
 .dock-container {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 520px);
   display: flex;
   flex-direction: column;
-  background: rgba(10, 14, 24, 0.98);
-  border-top: 1px solid var(--border-subtle);
+  background: rgba(10, 15, 26, 0.78);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
   z-index: 100;
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
 }
 
 .dock-tabs {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  gap: 4px;
+  padding: 6px;
   overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .dock-tab-btn {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
-  padding: 8px 14px;
-  color: var(--text-muted);
+  justify-content: center;
+  gap: 3px;
+  min-width: 74px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 7px 10px 6px;
+  color: #a3b1c6;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
   position: relative;
   white-space: nowrap;
 }
 
 .dock-tab-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.07);
   color: #fff;
+  transform: translateY(-2px);
 }
 
 .dock-tab-btn.active {
-  background: var(--accent-police);
-  border-color: #3b82f6;
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+  border-color: rgba(147, 197, 253, 0.5);
   color: #fff;
-  font-weight: 600;
-  box-shadow: 0 0 16px var(--accent-police-glow);
+  box-shadow: 0 4px 16px var(--accent-police-glow);
 }
 
 .dock-tab-icon {
-  font-size: 1rem;
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .dock-tab-label {
   font-family: var(--font-display);
-  font-size: 0.8rem;
+  font-size: 0.66rem;
+  font-weight: 600;
   letter-spacing: 0.03em;
 }
 
 .dock-tab-badge {
+  position: absolute;
+  top: 3px;
+  right: 10px;
   background: var(--accent-alert);
   color: #fff;
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 700;
   border-radius: 999px;
-  padding: 1px 6px;
+  padding: 1px 5px;
+  box-shadow: 0 0 8px var(--accent-alert-glow);
 }
 
 /* Strip de Cômodos da Delegacia */
 .dock-rooms-strip {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 18px;
+  gap: 8px;
+  padding: 8px;
   overflow-x: auto;
-  background: rgba(6, 9, 16, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .room-strip-card {
@@ -277,8 +320,8 @@ body {
 /* Minimapa Radar (Canto Inferior Direito) */
 .minimap-radar-container {
   position: absolute;
-  bottom: 16px;
-  right: 16px;
+  bottom: 12px;
+  right: 12px;
   width: 220px;
   padding: 12px;
   display: flex;
@@ -373,11 +416,10 @@ body {
   color: var(--text-muted);
 }
 
-/* Layout do Jogo */
+/* Layout do Jogo: o mapa ocupa a tela inteira */
 .game-viewport-container {
-  flex: 1;
-  position: relative;
-  display: flex;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
 }
 
@@ -390,23 +432,57 @@ body {
   z-index: 1;
 }
 
-/* Overlays operacionais desafogados */
+/* Painéis laterais flutuantes (abaixo da barra superior) */
 .ui-overlay-left {
   position: absolute;
-  top: 14px;
-  left: 14px;
-  width: 260px;
+  top: 66px;
+  left: 12px;
+  width: 250px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   z-index: 20;
   pointer-events: auto;
 }
 
+.ui-overlay-left.collapsed {
+  width: auto;
+}
+
+.ui-overlay-left .glass-panel,
+.ui-overlay-right .glass-panel,
+.minimap-radar-container.glass-panel {
+  background: rgba(10, 15, 26, 0.72);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-radius: 12px;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.panel-toggle {
+  align-self: flex-start;
+  height: 30px;
+  min-width: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 15, 26, 0.72);
+  backdrop-filter: blur(12px);
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.2s, color 0.2s;
+}
+
+.panel-toggle:hover {
+  background: rgba(37, 99, 235, 0.6);
+  color: #fff;
+}
+
 .ui-overlay-right {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 66px;
+  right: 12px;
   width: 280px;
   max-height: 48vh;
   display: flex;
@@ -414,6 +490,111 @@ body {
   gap: 10px;
   z-index: 20;
   pointer-events: auto;
+  animation: slide-in-right 0.25s ease-out;
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Etiquetas flutuantes sobre o mapa (estilo pílula) */
+.map-pin {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  border-radius: 999px;
+  background: rgba(8, 12, 22, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  z-index: 20;
+  white-space: nowrap;
+}
+
+.map-pin__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.95);
+  font-size: 0.68rem;
+}
+
+.map-pin__label {
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.map-pin--station {
+  background: rgba(23, 50, 120, 0.92);
+  border-color: rgba(96, 165, 250, 0.6);
+}
+
+.map-pin--incident {
+  background: rgba(200, 30, 30, 0.94);
+  border-color: #f87171;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 40;
+  animation: pin-pulse 1.4s ease-in-out infinite;
+}
+
+.map-pin--incident:hover {
+  filter: brightness(1.15);
+}
+
+@keyframes pin-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55), 0 4px 14px rgba(0, 0, 0, 0.45); }
+  50% { box-shadow: 0 0 0 7px rgba(239, 68, 68, 0), 0 4px 14px rgba(0, 0, 0, 0.45); }
+}
+
+/* Controles de câmera (pilha vertical, canto inferior esquerdo) */
+.map-controls {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 30;
+}
+
+.map-ctrl-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 15, 26, 0.72);
+  backdrop-filter: blur(12px);
+  color: #e2e8f0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.map-ctrl-btn:hover {
+  background: rgba(37, 99, 235, 0.75);
+  transform: scale(1.06);
+}
+
+@media (max-width: 1280px) {
+  .dock-container { max-width: calc(100% - 300px); }
+  .dock-tab-btn { min-width: 62px; padding: 6px 6px; }
+  .minimap-radar-container { bottom: 96px; }
 }
 
 .card-header {

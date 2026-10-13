@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {
   LoadedCityAssets,
   createRealPoliceStation,
@@ -8,7 +9,7 @@ import {
 
 export const CITY_MATERIALS = {
   grass: new THREE.MeshStandardMaterial({
-    color: 0x336b3b,
+    color: 0x4a8a3f,
     roughness: 0.9,
     metalness: 0.05
   }),
@@ -76,28 +77,86 @@ export function createTreeMesh(scale: number = 1.0): THREE.Group {
 }
 
 /**
+ * Gerador pseudo-aleatório determinístico (mesma cidade a cada carregamento)
+ */
+function seededRandom(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+/**
+ * Funde todas as malhas estáticas de um grupo em poucas malhas (uma por material),
+ * reduzindo centenas de draw calls para algumas unidades.
+ */
+function mergeStaticGroup(group: THREE.Group, receiveShadow = true): THREE.Group {
+  group.updateMatrixWorld(true);
+  const buckets = new Map<string, { material: THREE.Material; geometries: THREE.BufferGeometry[] }>();
+  let ok = true;
+
+  group.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh || Array.isArray(mesh.material)) {
+      if (mesh.isMesh) ok = false;
+      return;
+    }
+    const geo = mesh.geometry.clone();
+    geo.applyMatrix4(mesh.matrixWorld);
+    const key = mesh.material.uuid;
+    if (!buckets.has(key)) buckets.set(key, { material: mesh.material, geometries: [] });
+    buckets.get(key)!.geometries.push(geo);
+  });
+
+  if (!ok) return group;
+
+  const merged = new THREE.Group();
+  for (const { material, geometries } of buckets.values()) {
+    const geo = mergeGeometries(geometries, false);
+    if (!geo) return group; // atributos incompatíveis: mantém o grupo original
+    const mesh = new THREE.Mesh(geo, material);
+    mesh.receiveShadow = receiveShadow;
+    mesh.castShadow = false;
+    merged.add(mesh);
+  }
+  geometriesDispose(buckets);
+  return merged;
+}
+
+function geometriesDispose(
+  buckets: Map<string, { material: THREE.Material; geometries: THREE.BufferGeometry[] }>
+) {
+  for (const { geometries } of buckets.values()) geometries.forEach((g) => g.dispose());
+}
+
+// Malha viária: núcleo original + avenidas externas para a cidade continuar além da tela
+const CORE_X_ROADS = [8, 12, 16, 28, 32];
+const CORE_Z_ROADS = [4, 12, 16, 24, 28];
+const X_ROADS = [-16, -4, ...CORE_X_ROADS, 44, 56];
+const Z_ROADS = [-20, -8, ...CORE_Z_ROADS, 40, 52];
+const ROAD_MIN = -28;
+const ROAD_MAX = 66;
+
+/**
  * Cria a malha urbana completa e contínua com os modelos Kenney GLTF
  */
 export function createCityGroundWithKenneyAssets(assets: LoadedCityAssets): THREE.Group {
   const city = new THREE.Group();
+  const rand = seededRandom(1337);
 
-  // 1. Pedestal do Diorama da Cidade (Base Limpa e Sólida)
-  const baseGeo = new THREE.BoxGeometry(46, 0.4, 46);
-  const baseMesh = new THREE.Mesh(baseGeo, CITY_MATERIALS.grass);
-  baseMesh.position.set(20, -0.2, 16);
-  baseMesh.receiveShadow = true;
-  city.add(baseMesh);
-
-  const pedestalGeo = new THREE.BoxGeometry(46.8, 1.2, 46.8);
-  const pedestalMesh = new THREE.Mesh(pedestalGeo, CITY_MATERIALS.groundPedestal);
-  pedestalMesh.position.set(20, -1.0, 16);
-  city.add(pedestalMesh);
+  // 1. Chão contínuo (sem "ilha" flutuante): a cidade se estende além das bordas da tela
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(400, 400).rotateX(-Math.PI / 2),
+    CITY_MATERIALS.grass
+  );
+  ground.position.set(20, -0.01, 16);
+  ground.receiveShadow = true;
+  city.add(ground);
 
   // 2. Ruas e Avenidas Contínuas da Cidade
-  // Coordenadas dos eixos viários principais
-  const X_ROADS = [8, 12, 16, 28, 32];
-  const Z_ROADS = [4, 12, 16, 24, 28];
   const roadScale = 2.0; // 1 tile Kenney = 2.0 unidades de largura (2 faixas perfeitas)
+  const roads = new THREE.Group();
 
   // Conjunto de cruzamentos
   const intersectionSet = new Set<string>();
@@ -109,7 +168,7 @@ export function createCityGroundWithKenneyAssets(assets: LoadedCityAssets): THRE
       const cross = assets.roadCrossroad.clone(true);
       cross.scale.set(roadScale, roadScale, roadScale);
       cross.position.set(rx, 0.01, rz);
-      city.add(cross);
+      roads.add(cross);
 
       // Semáforos nos cruzamentos de grande fluxo
       if ((rx === 16 && rz === 16) || (rx === 28 && rz === 16)) {
@@ -125,30 +184,33 @@ export function createCityGroundWithKenneyAssets(assets: LoadedCityAssets): THRE
   // Segmentos de ruas horizontais (ao longo do eixo X)
   // road-straight por padrão estende ao longo do eixo X (rotation.y = 0)
   for (const rz of Z_ROADS) {
-    for (let rx = 6; rx <= 34; rx += 2) {
+    for (let rx = ROAD_MIN; rx <= ROAD_MAX; rx += 2) {
       if (intersectionSet.has(`${rx},${rz}`)) continue;
 
       const roadSeg = assets.roadStraight.clone(true);
       roadSeg.scale.set(roadScale, roadScale, roadScale);
       roadSeg.position.set(rx, 0.01, rz);
       roadSeg.rotation.y = 0; // Perfeitamente alinhado com o eixo X!
-      city.add(roadSeg);
+      roads.add(roadSeg);
     }
   }
 
   // Segmentos de ruas verticais (ao longo do eixo Z)
   // Girar 90 graus para estender ao longo do eixo Z (rotation.y = Math.PI / 2)
   for (const rx of X_ROADS) {
-    for (let rz = 2; rz <= 30; rz += 2) {
+    for (let rz = ROAD_MIN; rz <= ROAD_MAX; rz += 2) {
       if (intersectionSet.has(`${rx},${rz}`)) continue;
 
       const roadSeg = assets.roadStraight.clone(true);
       roadSeg.scale.set(roadScale, roadScale, roadScale);
       roadSeg.position.set(rx, 0.01, rz);
       roadSeg.rotation.y = Math.PI / 2; // Perfeitamente alinhado com o eixo Z!
-      city.add(roadSeg);
+      roads.add(roadSeg);
     }
   }
+
+  // Centenas de peças de rua viram poucas malhas (desempenho)
+  city.add(mergeStaticGroup(roads));
 
   // 3. Postes de Iluminação Curvados Kenney ao longo das calçadas
   const streetLightPositions = [
@@ -175,9 +237,57 @@ export function createCityGroundWithKenneyAssets(assets: LoadedCityAssets): THRE
   ];
 
   for (const [tx, tz] of treePositions) {
-    const tree = createTreeMesh(0.75 + Math.random() * 0.35);
+    const tree = createTreeMesh(0.75 + rand() * 0.35);
     tree.position.set(tx, 0.02, tz);
     city.add(tree);
+  }
+
+  // 5. Quarteirões externos preenchidos (cidade continua além do bairro jogável)
+  const fillerModels = [
+    assets.buildingA,
+    assets.buildingB,
+    assets.buildingC,
+    assets.buildingD,
+    assets.buildingE
+  ];
+  const isCore = (x: number, z: number) => x > 5 && x < 35 && z > 1 && z < 31;
+
+  for (let i = 0; i < X_ROADS.length - 1; i++) {
+    for (let j = 0; j < Z_ROADS.length - 1; j++) {
+      const x0 = X_ROADS[i] + 1.4;
+      const x1 = X_ROADS[i + 1] - 1.4;
+      const z0 = Z_ROADS[j] + 1.4;
+      const z1 = Z_ROADS[j + 1] - 1.4;
+      if (x1 - x0 < 5 || z1 - z0 < 5) continue;
+
+      const cx = (x0 + x1) / 2;
+      const cz = (z0 + z1) / 2;
+      if (isCore(cx, cz)) continue;
+
+      // Até 4 lotes por quarteirão (2x2), cada um com prédio ou bosque
+      const lotsX = x1 - x0 >= 9 ? [x0 + (x1 - x0) * 0.27, x0 + (x1 - x0) * 0.73] : [cx];
+      const lotsZ = z1 - z0 >= 9 ? [z0 + (z1 - z0) * 0.27, z0 + (z1 - z0) * 0.73] : [cz];
+
+      for (const lx of lotsX) {
+        for (const lz of lotsZ) {
+          if (rand() < 0.72) {
+            const model = fillerModels[Math.floor(rand() * fillerModels.length)];
+            const bldg = model.clone(true);
+            const s = 2.3 + rand() * 0.6;
+            bldg.scale.set(s, s, s);
+            bldg.position.set(lx, 0.02, lz);
+            bldg.rotation.y = Math.floor(rand() * 4) * (Math.PI / 2);
+            city.add(bldg);
+          } else {
+            for (let k = 0; k < 3; k++) {
+              const tree = createTreeMesh(0.7 + rand() * 0.4);
+              tree.position.set(lx + (rand() - 0.5) * 2.4, 0.02, lz + (rand() - 0.5) * 2.4);
+              city.add(tree);
+            }
+          }
+        }
+      }
+    }
   }
 
   // Arranha-céu no horizonte leste (skyline de fundo, sem cobrir a delegacia)
@@ -314,9 +424,11 @@ export function createCommercialBuildingFromAssets(
   if (stage === 'abandoned') {
     bldg.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        const mesh = child as THREE.Mesh;
+        const mat = (mesh.material as THREE.MeshStandardMaterial)?.clone();
         if (mat) {
           mat.color.multiplyScalar(0.75);
+          mesh.material = mat;
         }
       }
     });
@@ -353,9 +465,11 @@ export function createResidentialBuildingFromAssets(
   if (stage === 'abandoned') {
     bldg.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
-        const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        const mesh = child as THREE.Mesh;
+        const mat = (mesh.material as THREE.MeshStandardMaterial)?.clone();
         if (mat) {
           mat.color.multiplyScalar(0.72);
+          mesh.material = mat;
         }
       }
     });

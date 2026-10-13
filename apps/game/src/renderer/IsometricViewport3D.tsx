@@ -7,7 +7,8 @@ import {
   createCrownVictoriaFromAssets,
   createArmoredVehicleFromAssets,
   createCharacterInstance,
-  createSuspectInstance
+  createSuspectInstance,
+  loadCityPackScene
 } from './asset-loader-3d.js';
 import {
   createCityGroundWithKenneyAssets,
@@ -54,6 +55,35 @@ interface WorldPin {
   visible: boolean;
 }
 
+// Limites da câmera: nunca mostrar a borda do mundo
+const DEFAULT_ZOOM = 9.5;
+const MIN_ZOOM = 5.0;
+
+// TESTE: ?cidade=pack carrega a cidade do pacote LowPoly City como fundo
+// (&escala=150 ajusta o tamanho da cidade em unidades do mundo)
+const URL_PARAMS = new URLSearchParams(window.location.search);
+const CITY_PACK_MODE = URL_PARAMS.get('cidade') === 'pack';
+const CITY_PACK_SIZE = Number(URL_PARAMS.get('escala')) || 150;
+
+const MAX_ZOOM = CITY_PACK_MODE ? 40.0 : 16.0;
+const PAN_BOUNDS = CITY_PACK_MODE
+  ? {
+      minX: 20 - CITY_PACK_SIZE / 2,
+      maxX: 20 + CITY_PACK_SIZE / 2,
+      minZ: 16 - CITY_PACK_SIZE / 2,
+      maxZ: 16 + CITY_PACK_SIZE / 2
+    }
+  : { minX: -6, maxX: 46, minZ: -8, maxZ: 44 };
+
+// Céu / névoa por período do dia (mesma cor no fundo e na névoa)
+const SKY_COLORS = {
+  day: 0x8fb3a3,
+  sunset: 0x8a5a6e,
+  night: 0x0b1220
+};
+
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
 export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
   state,
   onSelectIncident
@@ -80,11 +110,11 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     clock: THREE.Clock;
   } | null>(null);
 
-  // Estado da Câmera: Centrada na Delegacia com visão equilibrada do quarteirão
+  // Estado da Câmera: Centrada na Delegacia, mais próxima (cidade preenche a tela)
   const cameraState = useRef({
     targetX: 18,
     targetZ: 17,
-    zoom: 14.5,
+    zoom: DEFAULT_ZOOM,
     isDragging: false,
     lastMouseX: 0,
     lastMouseY: 0
@@ -126,9 +156,12 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     const aspect = width / height;
     const assets = assetsRef.current;
 
-    // Cena com cor de fundo profunda
+    // Cena com céu/névoa que se mistura ao horizonte da cidade
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0f1d);
+    scene.background = new THREE.Color(SKY_COLORS.day);
+    scene.fog = CITY_PACK_MODE
+      ? new THREE.Fog(SKY_COLORS.day, 160, 420)
+      : new THREE.Fog(SKY_COLORS.day, 75, 170);
 
     // Câmera Ortográfica Isométrica Fixa (Projeção Axonométrica Limpa)
     const zm = cameraState.current.zoom;
@@ -163,13 +196,14 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     sunLight.shadow.mapSize.height = 2048;
     sunLight.shadow.camera.near = 10;
     sunLight.shadow.camera.far = 140;
-    const shadowDist = 32;
+    const shadowDist = 36;
     sunLight.shadow.camera.left = -shadowDist;
     sunLight.shadow.camera.right = shadowDist;
     sunLight.shadow.camera.top = shadowDist;
     sunLight.shadow.camera.bottom = -shadowDist;
     sunLight.shadow.bias = -0.0004;
     scene.add(sunLight);
+    scene.add(sunLight.target);
 
     // Luz Ambiente e Hemisphere Fill Light para sombras suaves
     const ambientLight = new THREE.AmbientLight(0x7dd3fc, 0.45);
@@ -178,9 +212,23 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     const hemiLight = new THREE.HemisphereLight(0xfff7ed, 0x1e293b, 0.65);
     scene.add(hemiLight);
 
-    // Terreno e Ruas Kenney
-    const cityGround = createCityGroundWithKenneyAssets(assets);
-    scene.add(cityGround);
+    // Terreno e Ruas: Kenney (padrão) ou cidade do pacote LowPoly City (teste)
+    if (CITY_PACK_MODE) {
+      const fallbackGround = new THREE.Mesh(
+        new THREE.PlaneGeometry(600, 600).rotateX(-Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: 0x4a8a3f, roughness: 0.9 })
+      );
+      fallbackGround.position.set(20, -0.05, 16);
+      fallbackGround.receiveShadow = true;
+      scene.add(fallbackGround);
+
+      loadCityPackScene(CITY_PACK_SIZE, 20, 16).then((cityPack) => {
+        if (cityPack && threeRef.current?.scene === scene) scene.add(cityPack);
+      });
+    } else {
+      const cityGround = createCityGroundWithKenneyAssets(assets);
+      scene.add(cityGround);
+    }
 
     // 3. Viaturas da Delegacia (Viatura 01 Sedan e Viatura 02 Blindado 09 Tático)
     const vehiclesMap = new Map<string, Vehicle3DObject>();
@@ -319,6 +367,7 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
   // 3. Atualização e Instanciação dos Prédios Kenney da Cidade
   useEffect(() => {
     if (!threeRef.current || !assetsRef.current) return;
+    if (CITY_PACK_MODE) return; // teste: a cidade do pacote já tem seus próprios prédios
     const { scene, buildingMeshes } = threeRef.current;
     const assets = assetsRef.current;
     const activeDistrict = state.districts[state.activeDistrictId];
@@ -350,6 +399,8 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
   useEffect(() => {
     if (!assetsLoaded) return;
     let animId: number;
+    let lastPinsUpdate = 0;
+    let lastPinsKey = '';
 
     const animate = () => {
       if (!threeRef.current || !containerRef.current) return;
@@ -368,28 +419,36 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
       const timeMinutes = currentState.clock.timeOfDayMinutes;
 
       // Ciclo de Iluminação Dia / Entardecer / Noite
+      let skyHex: number;
       if (timeMinutes >= 360 && timeMinutes < 1080) {
         // Dia (06:00 - 18:00)
         sunLight.color.setHex(0xfff7ed);
         sunLight.intensity = 1.4;
         ambientLight.color.setHex(0x93c5fd);
         ambientLight.intensity = 0.5;
-        scene.background = new THREE.Color(0x0b1329);
+        skyHex = SKY_COLORS.day;
       } else if (timeMinutes >= 1080 && timeMinutes < 1200) {
         // Pôr do sol (18:00 - 20:00)
         sunLight.color.setHex(0xf59e0b);
         sunLight.intensity = 1.0;
         ambientLight.color.setHex(0xb45309);
         ambientLight.intensity = 0.38;
-        scene.background = new THREE.Color(0x1a102f);
+        skyHex = SKY_COLORS.sunset;
       } else {
         // Noite (20:00 - 06:00)
         sunLight.color.setHex(0x38bdf8);
         sunLight.intensity = 0.32;
         ambientLight.color.setHex(0x1e3a8a);
         ambientLight.intensity = 0.22;
-        scene.background = new THREE.Color(0x030712);
+        skyHex = SKY_COLORS.night;
       }
+      (scene.background as THREE.Color).setHex(skyHex);
+      scene.fog?.color.setHex(skyHex);
+
+      // Sol e sombras acompanham o ponto focal da câmera
+      const { targetX, targetZ } = cameraState.current;
+      sunLight.position.set(targetX + 35, 48, targetZ + 22);
+      sunLight.target.position.set(targetX, 0, targetZ);
 
       // 5. Movimentação Contínua de Todas as Viaturas Policiais a 60 FPS
       const { vehicles } = threeRef.current;
@@ -537,7 +596,7 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
       const pins: WorldPin[] = [];
 
       const activeDistrict = currentState.districts[currentState.activeDistrictId];
-      if (activeDistrict) {
+      if (activeDistrict && !CITY_PACK_MODE) {
         for (const bldg of activeDistrict.buildings) {
           const pos = new THREE.Vector3(bldg.position.x * 4, 3.4, bldg.position.y * 4);
           pos.project(camera);
@@ -593,7 +652,18 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
         });
       }
 
-      setWorldPins(pins);
+      // Atualiza o estado React dos pinos no máximo ~10x/s e apenas se algo mudou
+      const now = performance.now();
+      if (now - lastPinsUpdate > 100) {
+        lastPinsUpdate = now;
+        const key = pins
+          .map((p) => `${p.id}:${Math.round(p.screenX)}:${Math.round(p.screenY)}:${p.visible ? 1 : 0}`)
+          .join('|');
+        if (key !== lastPinsKey) {
+          lastPinsKey = key;
+          setWorldPins(pins);
+        }
+      }
 
       renderer.render(scene, camera);
       animId = requestAnimationFrame(animate);
@@ -619,9 +689,17 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     cameraState.current.lastMouseX = e.clientX;
     cameraState.current.lastMouseY = e.clientY;
 
-    const factor = 0.035;
-    cameraState.current.targetX -= (deltaX - deltaY) * factor;
-    cameraState.current.targetZ -= (-deltaX - deltaY) * factor;
+    const factor = 0.035 * (cameraState.current.zoom / DEFAULT_ZOOM);
+    cameraState.current.targetX = clamp(
+      cameraState.current.targetX - (deltaX - deltaY) * factor,
+      PAN_BOUNDS.minX,
+      PAN_BOUNDS.maxX
+    );
+    cameraState.current.targetZ = clamp(
+      cameraState.current.targetZ - (-deltaX - deltaY) * factor,
+      PAN_BOUNDS.minZ,
+      PAN_BOUNDS.maxZ
+    );
 
     const { camera } = threeRef.current;
     camera.position.set(
@@ -642,7 +720,7 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     if (!threeRef.current || !containerRef.current) return;
 
     const zoomStep = e.deltaY < 0 ? 0.92 : 1.08;
-    cameraState.current.zoom = Math.max(7.0, Math.min(26.0, cameraState.current.zoom * zoomStep));
+    cameraState.current.zoom = clamp(cameraState.current.zoom * zoomStep, MIN_ZOOM, MAX_ZOOM);
 
     const w = containerRef.current.clientWidth;
     const h = containerRef.current.clientHeight;
@@ -662,7 +740,7 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
     if (!threeRef.current || !containerRef.current) return;
     cameraState.current.targetX = 18;
     cameraState.current.targetZ = 17;
-    cameraState.current.zoom = 14.5;
+    cameraState.current.zoom = DEFAULT_ZOOM;
 
     const w = containerRef.current.clientWidth;
     const h = containerRef.current.clientHeight;
@@ -726,77 +804,35 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
         </div>
       )}
 
-      {/* Pinos Sutis Flutuantes sobre os Prédios e Ocorrências */}
+      {/* Pinos flutuantes sobre os Prédios e Ocorrências */}
       {worldPins.map((pin) => {
         if (!pin.visible) return null;
 
-        const isStation = pin.badgeType === 'station';
         const isIncident = pin.badgeType === 'incident';
 
         return (
           <div
             key={pin.id}
+            id={`map-pin-${pin.id}`}
+            className={`map-pin map-pin--${pin.badgeType}`}
             onClick={() => isIncident && onSelectIncident && onSelectIncident(pin.id)}
-            style={{
-              position: 'absolute',
-              left: pin.screenX,
-              top: pin.screenY,
-              transform: 'translate(-50%, -100%)',
-              cursor: isIncident ? 'pointer' : 'default',
-              pointerEvents: isIncident ? 'auto' : 'none',
-              zIndex: isIncident ? 40 : 20,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              background: isIncident
-                ? 'rgba(220, 38, 38, 0.92)'
-                : isStation
-                ? 'rgba(30, 58, 138, 0.92)'
-                : 'rgba(15, 23, 42, 0.82)',
-              border: isIncident
-                ? '1px solid #ef4444'
-                : isStation
-                ? '1px solid #3b82f6'
-                : '1px solid rgba(255, 255, 255, 0.16)',
-              borderRadius: '20px',
-              padding: '2px 8px',
-              boxShadow: '0 3px 10px rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(5px)',
-              transition: 'transform 0.1s ease'
-            }}
+            style={{ left: pin.screenX, top: pin.screenY }}
           >
-            <span style={{ fontSize: '0.7rem' }}>{pin.icon}</span>
-            <span
-              style={{
-                fontSize: '0.62rem',
-                fontWeight: 700,
-                fontFamily: 'var(--font-display)',
-                color: '#ffffff',
-                letterSpacing: '0.04em'
-              }}
-            >
-              {pin.label}
-            </span>
+            <span className="map-pin__icon">{pin.icon}</span>
+            <span className="map-pin__label">{pin.label}</span>
           </div>
         );
       })}
 
       {/* Controles de Câmera na tela */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 20,
-          left: 20,
-          display: 'flex',
-          gap: '8px',
-          zIndex: 30
-        }}
-      >
+      <div className="map-controls" onMouseDown={(e) => e.stopPropagation()}>
         <button
-          className="btn-ghost glass-panel"
+          id="map-zoom-in"
+          className="map-ctrl-btn"
+          title="Aproximar"
           onClick={() => {
             if (!threeRef.current || !containerRef.current) return;
-            cameraState.current.zoom = Math.max(7.0, cameraState.current.zoom * 0.88);
+            cameraState.current.zoom = clamp(cameraState.current.zoom * 0.88, MIN_ZOOM, MAX_ZOOM);
             const w = containerRef.current.clientWidth;
             const h = containerRef.current.clientHeight;
             const zm = cameraState.current.zoom;
@@ -807,13 +843,15 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
             threeRef.current.camera.updateProjectionMatrix();
           }}
         >
-          🔍 +
+          +
         </button>
         <button
-          className="btn-ghost glass-panel"
+          id="map-zoom-out"
+          className="map-ctrl-btn"
+          title="Afastar"
           onClick={() => {
             if (!threeRef.current || !containerRef.current) return;
-            cameraState.current.zoom = Math.min(26.0, cameraState.current.zoom * 1.12);
+            cameraState.current.zoom = clamp(cameraState.current.zoom * 1.12, MIN_ZOOM, MAX_ZOOM);
             const w = containerRef.current.clientWidth;
             const h = containerRef.current.clientHeight;
             const zm = cameraState.current.zoom;
@@ -824,10 +862,15 @@ export const IsometricViewport3D: React.FC<IsometricViewport3DProps> = ({
             threeRef.current.camera.updateProjectionMatrix();
           }}
         >
-          🔍 -
+          −
         </button>
-        <button className="btn-ghost glass-panel" onClick={centerOnStation}>
-          🎯 Focar Delegacia
+        <button
+          id="map-focus-station"
+          className="map-ctrl-btn"
+          title="Focar Delegacia"
+          onClick={centerOnStation}
+        >
+          🎯
         </button>
       </div>
     </div>

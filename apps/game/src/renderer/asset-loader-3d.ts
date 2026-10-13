@@ -134,8 +134,9 @@ export interface LoadedCityAssets {
   parkingBase: THREE.Group | null;
   suspectBase: THREE.Group | null;
   suspectTexture: THREE.Texture;
+  // Não carregados por padrão (arquivo de 58 MB não utilizado na cena)
   cityPackBase: THREE.Group | null;
-  cityPackTexture: THREE.Texture;
+  cityPackTexture: THREE.Texture | null;
 }
 
 let cachedCityAssets: LoadedCityAssets | null = null;
@@ -164,9 +165,7 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     delegaciaBase,
     hospitalBase,
     penitentiaryBase,
-    parkingBase,
-    suspectBase,
-    cityPackBase
+    suspectBase
   ] = await Promise.all([
     loadGLBModel('/models/roads/road-straight.glb'),
     loadGLBModel('/models/roads/road-crossroad.glb'),
@@ -188,10 +187,13 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
     safeLoadFBX('/models/buildings/delegacia/delegacia.fbx'),
     safeLoadFBX('/models/buildings/hospital/hospital.fbx'),
     safeLoadFBX('/models/buildings/penitentiary/penitentiary.fbx'),
-    safeLoadFBX('/models/buildings/parking/parking.fbx'),
-    safeLoadFBX('/models/characters/suspect/suspect.fbx'),
-    safeLoadFBX('/models/city_pack/LowPoly_City_01Ready.fbx')
+    safeLoadFBX('/models/characters/suspect/suspect.fbx')
   ]);
+
+  // Modelos pesados e não utilizados na cena atual — não carregar
+  const parkingBase: THREE.Group | null = null;
+  const cityPackBase: THREE.Group | null = null;
+  const cityPackTexture: THREE.Texture | null = null;
 
   const skins: CharacterSkinTextures = {
     male: loadTexture('/models/characters/Skins/skaterMaleA.png'),
@@ -205,7 +207,6 @@ export async function preloadCityAssets(): Promise<LoadedCityAssets> {
   const crownVicLightTexture = loadTexture('/models/vehicles/crown_vic/roof_light.png');
   const armoredTexture = loadTexture('/models/vehicles/armored/TEXTURE.png');
   const suspectTexture = loadTexture('/models/characters/suspect/texture.png');
-  const cityPackTexture = loadTexture('/models/city_pack/textures/color_1024x1024.jpg');
 
   // Higieniza modelos importados removendo planos de demonstração e luzes/câmeras embutidas
   if (hospitalBase) {
@@ -521,22 +522,35 @@ export function createRealPoliceStation(assets: LoadedCityAssets): THREE.Group |
   });
   toRemove.forEach((c) => c.parent?.remove(c));
 
-  const bbox = new THREE.Box3().setFromObject(bldg);
-  const size = new THREE.Vector3();
-  bbox.getSize(size);
-
-  const targetHeight = 3.8;
-  const currentHeight = Math.max(0.001, size.y);
-  const scale = targetHeight / currentHeight;
-  bldg.scale.set(scale, scale, scale);
-
-  const scaledBbox = new THREE.Box3().setFromObject(bldg);
-  if (scaledBbox.min.y < -0.001) {
-    bldg.position.y = -scaledBbox.min.y;
-  }
+  fitObjectToLot(bldg, 4.6, 3.8);
 
   root.add(bldg);
   return root;
+}
+
+/**
+ * Escala uniformemente um modelo importado para caber num lote (largura máx. e altura máx.),
+ * centraliza no eixo XZ e apoia a base no chão (y = 0).
+ */
+function fitObjectToLot(obj: THREE.Object3D, maxFootprint: number, maxHeight: number): void {
+  obj.scale.set(1, 1, 1);
+  obj.position.set(0, 0, 0);
+  obj.updateMatrixWorld(true);
+
+  const bbox = new THREE.Box3().setFromObject(obj);
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+
+  const footprint = Math.max(0.001, size.x, size.z);
+  const height = Math.max(0.001, size.y);
+  const scale = Math.min(maxFootprint / footprint, maxHeight / height);
+  obj.scale.set(scale, scale, scale);
+  obj.updateMatrixWorld(true);
+
+  const scaledBbox = new THREE.Box3().setFromObject(obj);
+  const center = new THREE.Vector3();
+  scaledBbox.getCenter(center);
+  obj.position.set(-center.x, -scaledBbox.min.y, -center.z);
 }
 
 /**
@@ -561,25 +575,8 @@ export function createRealHospital(assets: LoadedCityAssets): THREE.Group | null
   });
   toRemove.forEach((c) => c.parent?.remove(c));
 
-  const bbox = new THREE.Box3().setFromObject(bldg);
-  const size = new THREE.Vector3();
-  bbox.getSize(size);
-
-  // Proporção harmônica para o quarteirão
-  const targetHeight = 4.2;
-  const currentHeight = Math.max(0.001, size.y);
-  const scale = targetHeight / currentHeight;
-  bldg.scale.set(scale, scale, scale);
-
-  // Centraliza a origem no chão
-  const scaledBbox = new THREE.Box3().setFromObject(bldg);
-  const center = new THREE.Vector3();
-  scaledBbox.getCenter(center);
-  bldg.position.x = -center.x;
-  bldg.position.z = -center.z;
-  if (scaledBbox.min.y < -0.001) {
-    bldg.position.y = -scaledBbox.min.y;
-  }
+  // Proporção harmônica para o quarteirão (cabe no lote de 6.4)
+  fitObjectToLot(bldg, 5.4, 4.2);
 
   root.add(bldg);
   return root;
@@ -606,19 +603,7 @@ export function createRealPenitentiary(assets: LoadedCityAssets): THREE.Group | 
   });
   toRemove.forEach((c) => c.parent?.remove(c));
 
-  const bbox = new THREE.Box3().setFromObject(bldg);
-  const size = new THREE.Vector3();
-  bbox.getSize(size);
-
-  const targetWidth = 5.2;
-  const currentWidth = Math.max(0.001, size.x, size.z);
-  const scale = targetWidth / currentWidth;
-  bldg.scale.set(scale, scale, scale);
-
-  const scaledBbox = new THREE.Box3().setFromObject(bldg);
-  if (scaledBbox.min.y < -0.001) {
-    bldg.position.y = -scaledBbox.min.y;
-  }
+  fitObjectToLot(bldg, 5.2, 3.6);
 
   root.add(bldg);
   return root;
@@ -715,5 +700,90 @@ export function createSuspectInstance(assets: LoadedCityAssets): CharacterInstan
   };
 
   return { mesh: container, mixer, update };
+}
+
+/**
+ * TESTE: carrega a cidade completa do pacote LowPoly City (FBX de 58 MB) como fundo.
+ * - Remove luzes/câmeras embutidas
+ * - Usa um único material com a textura de paleta do pacote
+ * - Funde os ~3.000 objetos em uma única malha (1 draw call)
+ * - Escala para caber em `targetFootprint` unidades e centraliza em (centerX, centerZ)
+ */
+export async function loadCityPackScene(
+  targetFootprint = 150,
+  centerX = 20,
+  centerZ = 16
+): Promise<THREE.Group | null> {
+  const t0 = performance.now();
+  const fbx = await safeLoadFBX('/models/city_pack/LowPoly_City_01Ready.fbx');
+  if (!fbx) return null;
+  console.info(`[city_pack] FBX carregado em ${((performance.now() - t0) / 1000).toFixed(1)}s`);
+
+  const palette = loadTexture('/models/city_pack/textures/color_1024x1024.jpg');
+  palette.magFilter = THREE.LinearFilter;
+  palette.minFilter = THREE.LinearMipmapLinearFilter;
+  const material = new THREE.MeshStandardMaterial({ map: palette, roughness: 0.8, metalness: 0.05 });
+
+  fbx.updateMatrixWorld(true);
+
+  // Coleta todas as malhas, normalizando atributos para poder fundir
+  const geometries: THREE.BufferGeometry[] = [];
+  let meshCount = 0;
+  fbx.traverse((child) => {
+    const mesh = child as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.visible) return;
+    meshCount++;
+
+    let geo = mesh.geometry.clone();
+    geo.applyMatrix4(mesh.matrixWorld);
+    if (geo.index) geo = geo.toNonIndexed();
+
+    const clean = new THREE.BufferGeometry();
+    const pos = geo.getAttribute('position');
+    clean.setAttribute('position', pos);
+    clean.setAttribute(
+      'normal',
+      geo.getAttribute('normal') ?? (geo.computeVertexNormals(), geo.getAttribute('normal'))
+    );
+    clean.setAttribute(
+      'uv',
+      geo.getAttribute('uv') ?? new THREE.BufferAttribute(new Float32Array(pos.count * 2), 2)
+    );
+    geometries.push(clean);
+    geo.dispose();
+  });
+
+  const { mergeGeometries } = await import('three/examples/jsm/utils/BufferGeometryUtils.js');
+  const merged = mergeGeometries(geometries, false);
+  geometries.forEach((g) => g.dispose());
+  if (!merged) {
+    console.warn('[city_pack] Falha ao fundir geometrias');
+    return null;
+  }
+
+  const cityMesh = new THREE.Mesh(merged, material);
+  cityMesh.castShadow = true;
+  cityMesh.receiveShadow = true;
+
+  // Normaliza escala e posição
+  merged.computeBoundingBox();
+  const bbox = merged.boundingBox!;
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+  const scale = targetFootprint / Math.max(0.001, size.x, size.z);
+
+  const root = new THREE.Group();
+  root.add(cityMesh);
+  cityMesh.scale.setScalar(scale);
+  const center = new THREE.Vector3();
+  bbox.getCenter(center);
+  cityMesh.position.set(-center.x * scale, -bbox.min.y * scale, -center.z * scale);
+  root.position.set(centerX, 0, centerZ);
+
+  console.info(
+    `[city_pack] ${meshCount} malhas fundidas em 1 | tamanho original ${size.x.toFixed(1)} x ${size.y.toFixed(1)} x ${size.z.toFixed(1)} | escala ${scale.toFixed(4)} | total ${((performance.now() - t0) / 1000).toFixed(1)}s`
+  );
+
+  return root;
 }
 

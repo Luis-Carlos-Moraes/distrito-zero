@@ -101,14 +101,15 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
       </div>
 
       {/* Controles de Tempo */}
-      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+      <div className="hud-pill hud-time-controls">
         <button
+          id="hud-toggle-pause"
           onClick={onTogglePause}
           className="btn-ghost"
           style={{
             fontWeight: 700,
             fontSize: '0.75rem',
-            padding: '6px 12px',
+            padding: '5px 10px',
             color: clock.paused ? '#f87171' : '#34d399',
             borderColor: clock.paused ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)'
           }}
@@ -116,7 +117,7 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
           {clock.paused ? '▶ RETOMAR' : '⏸ PAUSAR'}
         </button>
 
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '6px', padding: '2px' }}>
+        <div style={{ display: 'flex', borderRadius: '6px', padding: '2px' }}>
           <button
             onClick={() => onChangeSpeed(1)}
             className={`btn-speed ${clock.gameSpeed === 1 ? 'active' : ''}`}
